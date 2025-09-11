@@ -1,0 +1,6 @@
+Flask
+pyodbc
+requests
+Pillow
+pyttsx3
+SpeechRecognition

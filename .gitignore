@@ -1,0 +1,11 @@
+# Entornos virtuales
+venv/
+alira/
+Lib/
+Scripts/
+__pycache__/
+*.pyc
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

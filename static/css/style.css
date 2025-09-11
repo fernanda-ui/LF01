@@ -1,0 +1,202 @@
+/* ========================
+       THEME TOKENS
+       ======================== */
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --panel-2: #fafbfc;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      /* Paleta rojo bonito + derivados */
+      --accent-700: #b91c1c; /* rojo profundo */
+      --accent-600: #dc2626; /* principal */
+      --accent-500: #ef4444; /* claro */
+      --accent-400: #f87171; /* más claro */
+      --white-metal-top: #ffffff;
+      --white-metal-bottom: #e9edf2; /* blanco metalizado */
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      --radius: 16px;
+    }
+    
+    [data-theme="dark"] {
+      --bg: #0b0d10;
+      --panel: #111318;
+      --panel-2: #0f1216;
+      --text: #e8edf5;
+      --muted: #9aa2b1;
+      --border: #1f252d;
+      /* Ajuste de acento para contraste en oscuro */
+      --accent-700: #ef4444;
+      --accent-600: #f43f5e;
+      --accent-500: #fb7185;
+      --accent-400: #fda4af;
+      --white-metal-top: #1a1f27;
+      --white-metal-bottom: #0f1216;
+      --shadow: 0 12px 32px rgba(0,0,0,.45);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: linear-gradient(160deg, var(--white-metal-top), var(--white-metal-bottom));
+      color: var(--text);
+      font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif;
+    }
+
+    /* Layout principal */
+    .app {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: var(--panel-2);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .brand {
+      padding: 18px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .brand-logo {
+      width: 50px; height: 38px; overflow: hidden;
+      display: grid; place-items: center; color: #fff; font-weight: 700;
+    }
+    .brand-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .brand-title { font-weight: 700; letter-spacing: .2px; }
+    .brand-sub { font-size: 12px; color: var(--muted); }
+
+    .logo-img {
+  height: 40px;
+  object-fit: contain;
+}
+
+.hidden {
+  display: none;
+}
+
+
+    .section-title { 
+      margin: 14px 16px 8px; 
+      font-size: 12px; 
+      text-transform: uppercase; 
+      letter-spacing: .12em; 
+      color: var(--muted); 
+    }
+
+    .chat-list { padding: 0 8px 8px; overflow: auto; }
+    .chat-item {
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+      gap: 12px; padding: 10px; margin: 6px 8px; border: 1px solid var(--border);
+      border-radius: 12px; background: var(--panel);
+      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.03);
+      transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .chat-item:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .chat-item.active { border-color: var(--accent-600); box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent-600) 25%, transparent); }
+    .chat-date { font-size: 12px; color: var(--muted); }
+    .chat-title { font-weight: 600; }
+
+    .profile {
+      border-top: 1px solid var(--border);
+      padding: 12px 14px;
+      background: var(--panel);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .profile-left { display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--border); overflow: hidden; display: grid; place-items: center; font-weight: 700; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .user-meta { line-height: 1.1; }
+    .user-name { font-weight: 700; font-size: 13px; }
+    .user-role { font-size: 11px; color: var(--muted); }
+
+    .profile-actions { display: flex; align-items: center; gap: 8px; }
+    .btn, .icon-btn {
+      border: 1px solid var(--border); background: var(--panel); color: var(--text);
+      padding: 8px 10px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 12px;
+      transition: background .15s ease, border-color .2s ease, transform .06s ease; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover, .icon-btn:hover { background: color-mix(in oklab, var(--panel) 70%, var(--accent-500) 30%); border-color: var(--accent-500); }
+    .icon-btn { padding: 8px; width: 36px; height: 36px; justify-content: center; }
+
+    /* Panel de chat */
+    .main {
+      display: grid; grid-template-rows: auto 1fr auto;
+      height: 100vh;
+    }
+
+    .chat-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 16px; border-bottom: 1px solid var(--border); background: var(--panel);
+    }
+    .title {
+      font-weight: 800; letter-spacing: .3px;
+    }
+    .sub { color: var(--muted); font-size: 12px; }
+
+    .chat-area {
+      padding: 16px; overflow: auto; background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    }
+
+    .msg {
+      max-width: min(70%, 720px);
+      margin: 10px 0;
+      padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: 0 2px 6px rgba(0,0,0,.04);
+      position: relative;
+    }
+    .msg.user {
+      margin-left: auto; border-top-right-radius: 6px;
+      background: color-mix(in oklab, var(--panel) 70%, var(--accent-400) 30%);
+      border-color: color-mix(in oklab, var(--border) 60%, var(--accent-500) 40%);
+    }
+    .msg.alira {
+      margin-right: auto; border-top-left-radius: 6px;
+      background: linear-gradient(160deg, var(--white-metal-top), var(--white-metal-bottom));
+    }
+    .bubble-meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    .chat-footer {
+      padding: 10px 16px; border-top: 1px solid var(--border); background: var(--panel);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .hint { font-size: 12px; color: var(--muted); }
+
+    /* Botón flotante para activar Alira */
+    .fab {
+      position: fixed; right: 24px; bottom: 24px; width: 68px; height: 68px; border-radius: 999px;
+      background: radial-gradient(60% 60% at 40% 40%, var(--accent-500), var(--accent-700));
+      box-shadow: 0 14px 35px color-mix(in oklab, var(--accent-700) 45%, transparent);
+      display: grid; place-items: center; cursor: pointer; border: 0; outline: none;
+      animation: floaty 3s ease-in-out infinite;
+    }
+    @keyframes floaty { 0%{ transform: translateY(0)} 50%{ transform: translateY(-8px)} 100%{ transform: translateY(0)} }
+    .fab:hover { transform: translateY(-2px); }
+    .fab-inner { position: relative; width: 60%; height: 60%; display: grid; place-items: center; }
+    .fab img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+    .fab svg { width: 100%; height: 100%; fill: #fff; opacity: .9; }
+
+    /* Toast */
+    .toast {
+      position: fixed; right: 24px; bottom: 104px; background: var(--panel); border: 1px solid var(--border);
+      padding: 10px 12px; border-radius: 12px; box-shadow: var(--shadow); opacity: 0; transform: translateY(8px);
+      transition: opacity .2s ease, transform .2s ease; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Utilidades */
+    .hidden { display: none !important; }
+    .spacer { flex: 1; }
+    .pill { padding: 4px 8px; border-radius: 999px; background: color-mix(in oklab, var(--accent-500) 20%, transparent); border: 1px solid var(--accent-500); color: var(--text); font-size: 11px; font-weight: 700; }

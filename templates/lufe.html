@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LF-01</title>
+<link rel="stylesheet" href="/static/css/style.css">    
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar izquierda -->
+    <aside class="sidebar">
+      <div class="brand">
+        <!-- ⬇️ LOGO: coloca tu imagen en /static/logo.png o cambia el src
+             Si no tienes imagen, se verá el bloque rojo con la A -->
+  
+ <div class="brand-logo">
+  <!-- Logo para modo claro (negro) -->
+  <img id="logoDark" src="/static/logo-lf-dark.png" alt="Logo negro" class="logo-img">
+  <!-- Logo para modo oscuro (blanco) -->
+  <img id="logoLight" src="/static/logo-lf-light.png" alt="Logo blanco" class="logo-img hidden">
+  <span id="logoFallback">A</span>
+</div>
+
+
+        <div>
+          <div class="brand-title">LF-01</div>
+          <div class="brand-sub">Tu asistente</div>
+        </div>
+        <div class="spacer"></div>
+        <button id="themeToggle" class="icon-btn" title="Cambiar tema" aria-label="Cambiar tema">
+          <!-- Sol/Luna -->
+          <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zm10.45 0l1.79-1.8 1.41 1.41-1.8 1.79-1.4-1.4zM12 4V1h-0v3h0zm0 19v-3h0v3h0zM4 12H1v0h3v0zm19 0h-3v0h3v0zM6.76 19.16l-1.42 1.42-1.79-1.8 1.41-1.41 1.8 1.79zm12.02-1.79l1.41 1.41-1.79 1.8-1.42-1.42 1.8-1.79zM12 7a5 5 0 100 10 5 5 0 000-10z"/></svg>
+          <svg id="moonIcon" class="hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
+        </button>
+      </div>
+
+      <div class="section-title">Historial</div>
+      <div id="chatList" class="chat-list" aria-label="Lista de chats por día">
+        <!-- Items generados por JS -->
+      </div>
+
+      <div class="profile">
+        <div class="profile-left">
+          <div class="avatar">
+            <!-- ⬇️ Coloca tu foto en /static/profile.jpg si quieres -->
+            <img src="/static/profile.jpg" alt="Perfil" onerror="this.parentElement.textContent='T'">
+          </div>
+          <div class="user-meta">
+            <div class="user-name">Tú</div>
+            <div class="user-role">Conectado</div>
+          </div>
+        </div>
+        <!-- Botón para recargar manualmente el historial -->
+        <button id="refreshBtn" class="icon-btn" title="Actualizar historial" aria-label="Actualizar historial">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path d="M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 108 8h-2a6 6 0 11-6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Panel principal -->
+    <main class="main">
+      <header class="chat-header">
+        <div>
+          <div class="title" id="chatTitle">Chat de hoy</div>
+          <div class="sub">Lo que hablas con Alira y lo que ella responde por voz</div>
+        </div>
+        <span class="pill" id="statusPill">En vivo</span>
+      </header>
+
+      <section id="chatArea" class="chat-area" aria-live="polite">
+        <!-- Mensajes generados por JS -->
+      </section>
+
+      <footer class="chat-footer">
+        <div class="hint">Consejo: haz clic en el botón flotante para activar a Alira. Este chat se actualiza automáticamente.</div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Botón flotante: Llama a /activar; puedes poner una imagen dentro -->
+  <button id="activateBtn" class="fab" title="Activar Alira" aria-label="Activar Alira">
+    <div class="fab-inner">
+      <!-- ⬇️ IMAGEN OPCIONAL DENTRO DEL BOTÓN -->
+      <!-- Coloca tu imagen en /static/alira-btn.png y deja este src. Si no existe, se muestra el ícono -->
+      <img id="fabImg" src="/static/LF-01.png" alt="Alira" onerror="this.style.display='none'">
+      <!-- Ícono de micrófono como fallback 
+      <svg id="fabIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.92V21H9v2h6v-2h-2v-3.08A7 7 0 0019 11h-2z"/></svg> -->
+    </div> 
+  </button>
+  <div id="toast" class="toast">Alira activada</div>
+
+</body>
+
+<script src="/static/js/script.js"></script>
+</html>
