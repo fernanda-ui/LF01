@@ -1,0 +1,32 @@
+# 1. Inicializar Git
+git init
+
+# 2. Agregar todos los archivos al staging
+git add .
+
+# 3. Hacer el primer commit
+git commit -m "Primer commit"
+
+# 4. Crear y cambiar a la rama main
+git branch -M main
+
+# 5. Agregar el repositorio remoto de GitHub
+git remote add origin https://github.com/fernanda-ui/LF01.git
+
+# 6. Subir la rama main al remoto (forzando si es necesario)
+git push -u origin main --force
+
+
+
+Cada vez que hagas cambios:
+
+git add .
+git commit -m "Mensaje descriptivo"
+git push
+
+
+Cada vez que hagas cambios locales y quieras que aparezcan en GitHub, debes ejecutar:
+
+git add .              # Agrega los cambios al staging
+git commit -m "mensaje"  # Guarda los cambios en Git local
+git push               # Envía los cambios a GitHub

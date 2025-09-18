@@ -1,0 +1,353 @@
+@import url('https://fonts.cdnfonts.com/css/devil-breeze');
+@import url('https://fonts.cdnfonts.com/css/poppins');
+@import url('https://fonts.cdnfonts.com/css/bimbo');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #000000;
+    color: #f0ecec;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+}
+/* Logo iris */
+.header {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    background: rgba(60, 59, 59, 0.5);
+    backdrop-filter: blur(10px);
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    position: relative;
+    
+}
+
+.header-content .circulo {
+    height: 38px;
+    width: 60px;
+}
+
+h1.title-he {
+    font-family: 'Devil Breeze', sans-serif;
+    color: #b41616;
+    font-size: 2rem;
+    margin: 0;
+    position: relative;
+    right: 10px;
+    top: 3.5px;
+}
+
+/* modelado 3d */
+
+.page-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    
+}
+
+.model-container {
+    flex-shrink: 0;
+    width: 00px;
+    height: 400px;
+    position: relative;
+    left: 500px; 
+    top: 150px;
+    z-index: 1;
+}
+
+.model-container model-viewer {
+    width: 100%;
+    height: 100%;
+}
+/* Contenedor del formulario de login */
+.login-container {
+    backdrop-filter: blur(15px);
+    padding: 3rem;
+    width: 40%;
+    min-height: 80vh;  /* altura mínima */
+    display: flex;
+    justify-content: center; /* centra horizontal */
+    align-items: center;     /* centra vertical */
+    position: relative;
+    overflow: hidden;
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 25px;
+    color: #b41616;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    z-index: 10;
+}
+
+input {
+    width: 300px;
+    padding: 10px;
+    border: none;
+    border-bottom: 2px solid rgb(91, 82, 82);
+    background: transparent;
+    color: #fff;
+    font-size: 15px;
+    display: block;  /* importante para margen auto */
+    margin: 0 auto;
+    outline: none;
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.499);
+}
+
+/* ======== FIX PARA AUTOCOMPLETADO (inputs usuario/contraseña) ======== */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0px 1000px #1c1c1c inset !important; /* gris bajito */
+    box-shadow: 0 0 0px 1000px #1c1c1c inset !important;          /* gris bajito */
+    -webkit-text-fill-color: #fff !important;  /* texto blanco */
+    caret-color: #fff !important;              /* cursor blanco */
+    border-bottom: 2px solid rgb(91, 82, 82);  /* mantiene borde inferior */
+    transition: background-color 9999s ease-in-out 0s !important;
+}
+
+button {
+    width: 300px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgb(91, 82, 82);
+    color: white;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 2rem auto;
+    outline: none;
+}
+
+/* ===================== FORM PANELS ===================== */
+
+.info-message {
+    text-align: center;
+    color: #b41616;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.form-wrapper {
+    width: 100%;
+    position: relative;
+}
+
+/* Cada panel (login o registro) */
+.form-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateX(100%);
+    width: 100%;
+    max-width: 400px;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    transition: all 0.5s ease;
+}
+
+/* Panel activo centrado */
+.form-panel.active {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateX(0);
+}
+
+
+/* === TELÉFONO CON +57 === */
+.phone-input {
+  display: flex;
+  align-items: center;   
+  justify-content: center; 
+  gap: 8px;
+  margin: 0 auto;  /* centrado como tus inputs */
+  width: 300px;    /* mismo ancho que el resto */
+}
+
+.phone-input .country-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 5px;
+  border-bottom: 2px solid rgb(91, 82, 82);
+  color: rgba(255,255,255,0.85);
+  font-weight: 600;
+  background: transparent;
+  font-family: 'Poppins', sans-serif;
+  user-select: none;
+}
+
+.phone-input #phone_local {
+  flex: 1; /* ocupa el espacio restante */
+  padding: 10px;
+  border: none;
+  border-bottom: 2px solid rgb(91, 82, 82);
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+}
+
+.password-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;  /* centra horizontal */
+}
+
+.password-field input {
+    width: 300px;  /* mismo ancho que tus otros inputs */
+    padding: 10px;
+    border: none;
+    border-bottom: 2px solid rgb(91, 82, 82);
+    background: transparent;
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+}
+
+.password-field small,
+.password-field #passwordError {
+    font-size: 10px;
+    text-align: center;
+    width: 300px;   /* se alinea con el input */
+    margin-top: 4px;
+}
+
+.password-field small {
+    color: gray;
+}
+
+.password-field #passwordError {
+    color: red;
+    display: none;
+}
+
+
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+}
+
+.switch-link {
+    display: block;
+    text-align: center;
+    position: relative;
+    bottom: 24px;
+    cursor: pointer;
+    color: #9f1d1d;
+    font-weight: 300;
+    font-size: 15px;
+}
+
+.switch-link:hover {
+    text-decoration: underline;
+}
+
+.error-message {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border: 1px solid red;
+    color: red;
+    border-radius: 6px;
+    text-align: center;
+    background-color: rgba(255,0,0,0.1);
+}
+
+
+
+/* ===================== FOOTER ===================== */
+footer {
+    border-top: 1px solid gray;  /* línea gris */
+    padding: 5px 10px 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    color: gray; /* todos los textos en gris */
+    position: absolute;  
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;  
+}
+
+.footer-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: gray;
+}
+
+.footer-left .divider {
+    width: 1px;              /* grosor */
+    height: 20px;            /* largo de la línea */
+    background-color: gray;  /* color de la línea */
+    display: inline-block;
+}
+
+
+.footer-left img {
+    width: 35px;
+    filter: grayscale(100%) brightness(70%); /* círculo en gris */
+    position: relative;
+    right: 10px;
+}
+
+.footer-right {
+    font-weight: 500;
+    color: gray; /* texto Colombia en gris */
+
+}
+
+.footer-right span {
+    font-weight: 250;
+    font-size: 17px;
+}
+
+.footer-left h1 {
+    font-weight: 300;
+    font-size: 18px;
+    color: rgba(52, 50, 50, 0.696); /* texto IRIS en gris */
+}
+
+.footer-left h3 {
+    font-family: 'Devil Breeze', sans-serif;
+    position: relative;
+    font-size: 18px;
+    right: 25px;
+    top: 0.7px;
+    color: rgba(50, 48, 48, 0.759); /* texto Learning Factory en gris */
+
+}
+
+

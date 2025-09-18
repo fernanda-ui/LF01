@@ -2,74 +2,165 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Iniciar Sesión</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .login-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 300px;
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            color: #333;
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 0.5rem 0;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 1rem;
-            background: #4CAF50;
-            border: none;
-            color: white;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #45a049;
-        }
-        .register-link {
-            display: block;
-            margin-top: 1rem;
-            text-align: center;
-        }
-        .register-link a {
-            color: #007BFF;
-            text-decoration: none;
-        }
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <title>Login / Registro</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <link rel="stylesheet" href="/static/css/login.css">
 </head>
 <body>
-    <div class="login-container">
-        <h2>🔑 Iniciar Sesión</h2>
-        <form method="POST" action="/login">
-            <input type="text" name="username" placeholder="Usuario" required>
-            <input type="password" name="password" placeholder="Contraseña" required>
-            <button type="submit">Entrar</button>
-        </form>
-        <div class="register-link">
-            ¿No tienes cuenta? <a href="/register">Regístrate aquí</a>
+
+    <header class="header">
+        <div class="header-content">
+            <img src="/static/circulo.png" alt="Logo" class="circulo">
+            <h1 class="title-he">IRIS</h1>
+        </div>
+    </header>
+
+    <!-- Contenedor general -->
+    <div class="page-container">
+        <!-- Modelo 3D a la izquierda -->
+        <div class="model-container">
+           <model-viewer src="/static/iris2.glb" 
+              alt="Personaje Iris" 
+              auto-rotate 
+              camera-controls 
+              ar
+              camera-orbit="120deg 70deg 8m"
+              style="width:200px; height:400px;">
+           </model-viewer>
+        </div>
+
+        <!-- Contenedor de login/registro -->
+        <div class="login-container">
+            <div class="form-wrapper">
+                <!-- LOGIN PANEL -->
+                <div class="form-panel iniciar active" id="loginPanel">
+                    <h2>Iniciar Sesión</h2>
+                    
+                    {% if request.args.get('suggested') %}
+                   <div class="info-message">
+                     Tu nombre de usuario es: {{ request.args.get('suggested') }}
+                   </div>
+                     {% endif %}
+
+                    <form method="POST" action="/login" autocomplete="on">
+                        <!-- Ahora acepta usuario o correo -->
+                        <input type="text" id="login_username" name="username" placeholder="Usuario o Correo" autocomplete="username" required>
+                        <input type="password" id="login_password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
+                        <button type="submit">Entrar</button>
+                    </form>
+                    <div class="switch-link" onclick="showRegister()">¿No tienes cuenta? Regístrate aquí</div>
+                    {% if error %}
+                    <div class="error-message">{{ error }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- REGISTER PANEL -->
+                <div class="form-panel register" id="registerPanel">
+                    <h2>Regístrate</h2>
+                    <form method="POST" action="/register" onsubmit="return validatePassword()" autocomplete="on">
+                        <input type="text" id="first_name" name="first_name" placeholder="Nombres" required>
+                        <input type="text" id="last_name" name="last_name" placeholder="Apellidos" required>
+                        <input type="email" name="email" placeholder="Correo electrónico" required>
+
+                        <!-- Teléfono con prefijo +57 -->
+                        <div class="phone-input">
+                          <span class="country-code">+57</span>
+                          <input type="tel" id="phone_local" placeholder="" inputmode="tel" pattern="[0-9]{7,10}" aria-label="Número celular sin código" required>
+                          <input type="hidden" name="phone" id="phone_full">
+                        </div>
+
+                        <!-- Usuario sugerido -->
+                        <input type="text" id="register_username" name="username" placeholder="Usuario" required>
+
+                        <!-- Contraseña con validación -->
+                       <div class="password-field">
+                         <input type="password" id="register_password" name="password" placeholder="Contraseña" autocomplete="new-password" required>
+                           <small id="passwordHelp">
+                               La contraseña debe tener al menos 8 caracteres, una letra <br>mayúscula, un número y un símbolo.
+                            </small>
+                       <div id="passwordError">
+                          La contraseña no cumple con los requisitos.
+                       </div>
+                    </div>
+
+                        <button type="submit">Registrar</button>
+                    </form>
+                    <div class="switch-link" onclick="showLogin()">¿Ya tienes cuenta? Iniciar sesión</div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-left">
+            <h1>LF-01</h1>
+            <span class="divider"></span>
+            <img src="/static/circulo.png" alt="Logo">
+            <h3>IRIS</h3>
+        </div>
+        <div class="footer-right">
+            <span>Colombia</span>
+        </div>
+    </footer>
+
+    <script>
+        const loginPanel = document.getElementById('loginPanel');
+        const registerPanel = document.getElementById('registerPanel');
+
+        function showRegister() {
+            loginPanel.classList.remove('active');
+            registerPanel.classList.add('active');
+        }
+
+        function showLogin() {
+            registerPanel.classList.remove('active');
+            loginPanel.classList.add('active');
+        }
+
+        // Construir phone completo con +57 antes de enviar
+        document.addEventListener('DOMContentLoaded', function () {
+          const registerForm = document.querySelector('#registerPanel form[action="/register"]');
+          if (registerForm) {
+            registerForm.addEventListener('submit', function (e) {
+              const local = document.getElementById('phone_local');
+              const full = document.getElementById('phone_full');
+              if (local && full) {
+                const digits = (local.value || '').replace(/\D/g, '');
+                if (!digits) return;
+                full.value = '+57' + digits;
+              }
+            });
+          }
+        });
+
+        // Generar usuario sugerido automáticamente
+        document.getElementById("first_name").addEventListener("input", suggestUsername);
+        document.getElementById("last_name").addEventListener("input", suggestUsername);
+
+        function suggestUsername() {
+            const first = document.getElementById("first_name").value.trim().toLowerCase();
+            const last = document.getElementById("last_name").value.trim().toLowerCase();
+            if (first && last) {
+                const randomNum = Math.floor(Math.random() * 1000);
+                document.getElementById("register_username").value = first + "." + last + randomNum;
+            }
+        }
+
+        // Validación de contraseña
+        function validatePassword() {
+            const password = document.getElementById("register_password").value;
+            const errorDiv = document.getElementById("passwordError");
+            const regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+
+            if (!regex.test(password)) {
+                errorDiv.style.display = "block";
+                return false;
+            } else {
+                errorDiv.style.display = "none";
+                return true;
+            }
+        }
+    </script>
 </body>
 </html>

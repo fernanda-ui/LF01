@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landing</title>
+    <link rel="stylesheet" href="/static/css/landing.css">
+</head>
+
+<body>
+    <header>
+        <div class="content-fit">
+            <div class="logo"><img src="/static/circulo.png" alt=""></div>
+            <nav>
+                <ul>
+                    <li>Contactos</li>
+                    <li>Planes</li>
+                    <li>Soporte</li>
+                    <li>
+                        <a href="{{ url_for('login') }}" class="btn-login">Login</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="section" id="banner">
+        <div class="content-fit">
+            <div class="title" data-before="">IRIS</div>
+        </div>
+        <div class="iris-subtext">
+            <span id="typing-text"></span>
+        </div>
+    </div>
+
+    <!-- INTRO: 2 cuadros -->
+    <div class="section" id="intro">
+        <div class="content-fit intro-grid">
+            <div class="des">
+                <div class="title">Iris</div>
+                <p>Recuerdame la reunion a las 2pm</p>
+                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptatibus voluptas a porro libero recusandae quae, aut ratione, incidunt laborum, similique enim doloremque ex. Laudantium obcaecati aspernatur doloremque illo beatae.</p>
+            </div>
+            <div class="des">
+                <div class="title">Asistente</div>
+                <p>Organiza tu día con un comando de voz</p>
+                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptatibus voluptas a porro libero recusandae quae, aut ratione, incidunt laborum, similique enim doloremque ex. Laudantium obcaecati aspernatur doloremque illo beatae.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- DESCRIPTION: 3 cuadros -->
+    <div class="section" id="description">
+        <div class="content-fit description-grid">
+            <div class="des">
+                <div class="title">Función 1</div>
+                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptatibus voluptas a porro libero recusandae quae.</p>
+            </div>
+            <div class="des">
+                <div class="title">Función 2</div>
+                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptatibus voluptas a porro libero recusandae quae.</p>
+            </div>
+            <div class="des">
+                <div class="title">Función 3</div>
+                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptatibus voluptas a porro libero recusandae quae.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section" id="contact">
+        <div class="content-fit">
+            <div class="des">
+                <div class="title">CONTACT</div>
+                <table>
+                    <tr>
+                        <td>Email</td>
+                        <td>xxxx</td>
+                    </tr>
+                    <tr>
+                        <td>Phone</td>
+                        <td>xxxx</td>
+                    </tr>
+                    <tr>
+                        <td>Website</td>
+                        <td>xxxx</td>
+                    </tr>
+                    <tr>
+                        <td>Youtube</td>
+                        <td>xxxx</td>
+                    </tr>
+                </table>
+                <div class="sign">Hola</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+<div id="container3D"></div>
+<script type="module" src="/static/js/landing.js"></script>
+</html>
