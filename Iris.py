@@ -74,29 +74,33 @@ def check_user(username_or_email, password):
     """
     con = get_connection()
     cur = con.cursor()
-    cur.execute("SELECT id, password FROM users WHERE username = ? OR email = ?", (username_or_email, username_or_email))
-    row = cur.fetchone()
+    cur.execute("SELECT id, username, password FROM users WHERE username = ? OR email = ?", (username_or_email, username_or_email))
+    user = cur.fetchone()
     con.close()
-    if not row:
-        return None
-    db_pass = str(row[1])
-    if db_pass.lower() == hash_password(password).lower():
-        return row[0]    # Devuelve el ID del usuario si coincide
+    if user:
+        db_id, db_username, db_password = user
+        if db_password.lower() == hash_password(password).lower():
+            return db_id    # Devuelve el ID del usuario si coincide
     return None
 
 
 def create_user(first_name, last_name, email, phone, username, password):
     """
-    Crea un nuevo usuario con datos completos si cumple requisitos de seguridad
+    Crea un nuevo usuario con datos completos si cumple requisitos de seguridad.
+    Retorna (True, None) si todo bien, o (False, mensaje_error) si hay problema.
     """
     import re
-    # Validación robusta de contraseña
     regex = re.compile(r'^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$')
     if not regex.match(password):
-        return False
+        return False, "La contraseña no cumple los requisitos."
 
     con = get_connection()
     cur = con.cursor()
+    # Verifica si el usuario o correo ya existen
+    cur.execute("SELECT 1 FROM users WHERE username = ? OR email = ?", (username, email))
+    if cur.fetchone():
+        con.close()
+        return False, "El usuario o correo ya están registrados."
     try:
         cur.execute("""
             INSERT INTO users (first_name, last_name, email, phone, username, password)
@@ -106,9 +110,9 @@ def create_user(first_name, last_name, email, phone, username, password):
     except Exception:
         con.rollback()
         con.close()
-        return False
+        return False, "Error al crear el usuario."
     con.close()
-    return True
+    return True, None
 
 
 def insert_chat(user_id, sender, mensaje):
@@ -362,49 +366,84 @@ def crear_ventana():
 app = Flask(__name__)
 app.secret_key = "clave_secreta_segura"
 
-@app.route("/login", methods=["GET","POST"])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Ruta de login"""
     error = None
-    if request.method == "POST":
-        user_input = request.form["username"]
-        pwd = request.form["password"]
-        user_id = check_user(user_input, pwd)
-        if user_id:
-            session["user_id"] = user_id
-            session["username"] = user_input
+    if request.method == 'POST':
+        username_or_email = request.form['username']
+        password = request.form['password']
 
-            # ✅ Obtener info completa del usuario
-            user_info = get_user_info(user_id)
+        con = get_connection()
+        cur = con.cursor()
+        cur.execute("SELECT id, username, password FROM users WHERE username = ? OR email = ?", (username_or_email, username_or_email))
+        user = cur.fetchone()
+        con.close()
 
-            return render_template("lufe.html", user=user_info)
+        if not user:
+            error = "El usuario es incorrecto."
+            return render_template('login.html', error=error)
         else:
-            error = "Usuario o contraseña incorrectos"
-    return render_template("login.html", error=error)
+            db_id, db_username, db_password = user
+            if hash_password(password) != db_password:
+                error = "La contraseña es incorrecta."
+                return render_template('login.html', error=error)
+            session['user_id'] = db_id  # <-- Guarda el id numérico
+            return redirect(url_for('home'))
+    return render_template('login.html', error=error)
 
+# Si quieres cubrir el caso de ambos incorrectos explícitamente:
+# Si el usuario/correo no existe y la contraseña tampoco coincide con ningún usuario, puedes mostrar:
+# "El usuario y la contraseña son incorrectos."
 
-@app.route("/register", methods=["GET", "POST"])
+@app.route('/register', methods=['POST'])
 def register():
-    """Ruta de registro"""
-    if request.method == "POST":
-        first_name = request.form["first_name"]
-        last_name = request.form["last_name"]
-        email = request.form["email"]
-        phone_local = request.form["phone"]
-        phone = "+57" + phone_local  # Se guarda con el prefijo
-        user = request.form["username"]
-        pwd = request.form["password"]
+    first_name = request.form['first_name']
+    last_name = request.form['last_name']
+    email = request.form['email']
+    phone = request.form['phone']
+    username = request.form['username']
+    password = request.form['password']
+    password_repeat = request.form['password_repeat']
 
-        # Validaciones básicas
-        if not all([first_name, last_name, email, phone, user, pwd]):
-            return "Todos los campos son obligatorios"
+    import re
+    regex = r'^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$'
+    if password != password_repeat:
+        error = "Las contraseñas no coinciden."
+        return render_template('login.html', error=error, suggested=username)
+    if not re.match(regex, password):
+        error = "La contraseña no cumple los requisitos."
+        return render_template('login.html', error=error, suggested=username)
 
-        # Llamada a la función que crea usuario en BD
-        if create_user(first_name, last_name, email, phone, user, pwd):
-            return redirect(url_for("login"))
+    # Verifica si el correo ya está registrado
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT 1 FROM users WHERE email = ?", (email,))
+    if cur.fetchone():
+        con.close()
+        error = "El correo ya está registrado."
+        return render_template('login.html', error=error, suggested=username)
 
-        return "Usuario inválido o ya existe (mínimo 6 chars, letras+nums)"
-    return render_template("register.html")
+    # Verifica si el usuario ya está registrado
+    cur.execute("SELECT 1 FROM users WHERE username = ?", (username,))
+    if cur.fetchone():
+        con.close()
+        error = "El usuario ya está registrado."
+        return render_template('login.html', error=error, suggested=username)
+
+    # Si todo está bien, crea el usuario
+    try:
+        cur.execute("""
+            INSERT INTO users (first_name, last_name, email, phone, username, password)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (first_name, last_name, email, phone, username, hash_password(password)))
+        con.commit()
+    except Exception:
+        con.rollback()
+        con.close()
+        error = "Error al crear el usuario."
+        return render_template('login.html', error=error, suggested=username)
+    con.close()
+    return redirect(url_for('login', suggested=username))
 
     user_info = get_user_info(session["user_id"]) if "user_id" in session else None
 
@@ -450,6 +489,100 @@ def get_chat():
     except Exception as e:
         print("Error fetch chats:", e)
         return jsonify([])
+
+from flask import jsonify
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+
+@app.route('/forgot_password', methods=['POST'])
+def forgot_password():
+    email = request.json.get('email')
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT username FROM users WHERE email = ?", (email,))
+    user = cur.fetchone()
+    if not user:
+        con.close()
+        return jsonify({'success': False, 'message': 'El correo no está registrado.'})
+    # Generar token seguro
+    import secrets
+    token = secrets.token_urlsafe(32)
+    # Guarda el token en la tabla password_resets
+    cur.execute("INSERT INTO password_resets (email, token) VALUES (?, ?)", (email, token))
+    con.commit()
+    con.close()
+    # Enviar correo con el enlace de restablecimiento
+    reset_link = f"http://localhost:5000/reset_password/{token}"
+    send_reset_email(email, reset_link)
+    return jsonify({'success': True, 'message': 'Se ha enviado un correo para restablecer tu contraseña.'})
+
+def send_reset_email(email, link):
+    # Configura tu servidor SMTP aquí
+    remitente = "luciacar1303@gmail.com"
+    password = "qdfe gqix rvqk yday"
+    msg = MIMEText(f"Para restablecer tu contraseña haz clic en el siguiente enlace:\n{link}")
+    msg['Subject'] = "Restablece tu contraseña"
+    msg['From'] = remitente
+    msg['To'] = email
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        server.login(remitente, password)
+        server.sendmail(remitente, [email], msg.as_string())
+
+@app.route('/check_email', methods=['POST'])
+def check_email():
+    email = request.json.get('email')
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT 1 FROM users WHERE email = ?", (email,))
+    exists = cur.fetchone() is not None
+    con.close()
+    return jsonify({'exists': exists})
+
+@app.route('/check_username', methods=['POST'])
+def check_username():
+    username = request.json.get('username')
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT 1 FROM users WHERE username = ?", (username,))
+    exists = cur.fetchone() is not None
+    # Sugerencias si existe
+    suggestions = []
+    if exists:
+        base = username
+        for i in range(1, 6):
+            cur.execute("SELECT 1 FROM users WHERE username = ?", (f"{base}{i}",))
+            if not cur.fetchone():
+                suggestions.append(f"{base}{i}")
+    con.close()
+    return jsonify({'exists': exists, 'suggestions': suggestions})
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT email FROM password_resets WHERE token = ?", (token,))
+    row = cur.fetchone()
+    if not row:
+        con.close()
+        return render_template('reset_password.html', error="Token inválido o expirado.", token=token)
+    email = row[0]
+    if request.method == 'POST':
+        new_password = request.form['new_password']
+        import re
+        regex = r'^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$'
+        if not re.match(regex, new_password):
+            con.close()
+            return render_template('reset_password.html', error="La contraseña no cumple los requisitos.", token=token)
+        # Cambia la contraseña del usuario
+        cur.execute("UPDATE users SET password = ? WHERE email = ?", (hash_password(new_password), email))
+        # Elimina el token usado
+        cur.execute("DELETE FROM password_resets WHERE token = ?", (token,))
+        con.commit()
+        con.close()
+        return redirect(url_for('login', mensaje="Contraseña restablecida correctamente."))
+    con.close()
+    return render_template('reset_password.html', token=token)
 
 # ===================== EJECUCIÓN PRINCIPAL =====================
 if __name__ == "__main__":
