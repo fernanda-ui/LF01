@@ -35,7 +35,12 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; margin:0; font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif; color: var(--text); background: linear-gradient(160deg, var(--white-metal-top), var(--white-metal-bottom)); }
+html, body { 
+  height: 100%; 
+  margin:0; 
+  font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif; 
+  color: var(--text); 
+  background: linear-gradient(160deg, var(--white-metal-top), var(--white-metal-bottom)); }
 
 /* ========================
         LAYOUT PRINCIPAL
@@ -73,13 +78,12 @@ html, body { height: 100%; margin:0; font:14px/1.4 system-ui, -apple-system, Seg
   font-weight: 700;
 }
 .brand-logo img {
-  width: 100%;
+  width: 95%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-.brand-title { font-weight: 700; letter-spacing: .2px; }
-.brand-sub { font-size: 12px; color: var(--muted); }
+
 
 .logo-img { height: 40px; object-fit: contain; }
 .hidden { display: none !important; }
@@ -130,6 +134,18 @@ html, body { height: 100%; margin:0; font:14px/1.4 system-ui, -apple-system, Seg
   min-width: 200px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   z-index: 100;
+}
+
+.profile-menu-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #fff;
+}
+
+.profile-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Chat List Sidebar */
@@ -266,4 +282,11 @@ html, body { height: 100%; margin:0; font:14px/1.4 system-ui, -apple-system, Seg
 
 /* Utilidades */
 .spacer { flex:1; }
-.pill { padding:4px 8px; border-radius:999px; background: color-mix(in oklab,var(--accent-500) 20%,transparent); border:1px solid var(--accent-500); color: var(--text); font-size:11px; font-weight:700; }
+.pill { padding:4px 8px; 
+  border-radius:999px; 
+  background: color-mix(in oklab,var(--accent-500) 20%,transparent); 
+  border:1px solid var(--accent-500); color: var(--text); 
+  font-size:11px; 
+  font-weight:700; }
+
+

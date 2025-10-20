@@ -2,5 +2,12 @@ Flask
 pyodbc
 requests
 Pillow
-pyttsx3
 SpeechRecognition
+pystray
+pyaudio
+gTTS
+pygame
+google-generativeai
+psutil
+pyautogui
+

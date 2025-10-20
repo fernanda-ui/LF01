@@ -1,27 +1,49 @@
 # ===================== IMPORTACIONES =====================
-import tkinter as tk                              # Para crear interfaces gráficas (ventana flotante con GIF)
+import tkinter as tk
+from tkinter import Toplevel                             # Para crear interfaces gráficas (ventana flotante con GIF)
 from PIL import Image, ImageTk, ImageSequence     # Para cargar, redimensionar y animar imágenes GIF
-import speech_recognition as sr                   # Para reconocimiento de voz (captura de audio y convierte a texto)
-import pyttsx3                                    # Para síntesis de voz (el asistente responde hablando)
-import threading                                  # Para manejar hilos (paralelismo: escuchar, hablar, ventana, etc.)
-import pystray                                    # Para icono en bandeja del sistema
-from pystray import MenuItem as item              # Para ítems de menú en el icono de la bandeja
+import speech_recognition as sr                   # Para reconocimiento de voz
+import threading                                  # Para manejar hilos
+import pystray                              # Para icono en bandeja del sistema
+from pystray import MenuItem as item
 import time
-import webbrowser                                 # Para abrir páginas web en el navegador
+import webbrowser
 import os
-import subprocess                                 # Para ejecutar comandos del sistema
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session   # Framework web Flask
-import requests                                   # Para realizar peticiones HTTP (ej: Google API)
-import hashlib                                    # Para cifrar contraseñas con SHA256
-import pyodbc                                     # Para conexión con base de datos SQL Server
+import subprocess
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session
+import requests
+import hashlib
+import pyodbc
+from gtts import gTTS
+import pygame
+import re
+import tempfile
+import google.generativeai as genai
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+import ctypes
 
 # ===================== CONFIGURACIÓN GENERAL =====================
-PALABRA_FINAL = "gracias"             # Palabra para finalizar interacciones
-PALABRA_ACTIVADORA = "iris"           # El asistente solo escucha comandos si inician con esta palabra
-GIF_SALUDO = "static/permanente.gif"  # GIF de saludo (se carga al inicio)
-GIF_PERMANENTE = "static/permanente.gif"  # GIF de animación permanente
-POSICION_VENTANA = (100, 100)         # Posición de la ventana flotante
-TAMANO_IMAGEN = (200, 200)            # Tamaño de la animación
+PALABRA_FINAL = "gracias"
+PALABRA_ACTIVADORA = "iris"
+GIF_SALUDO = "static/permanente.gif"
+GIF_PERMANENTE = "static/permanente.gif"
+POSICION_VENTANA = (100, 100)
+TAMANO_IMAGEN = (200, 200)
+
+# ===================== CONFIGURACIÓN API Gemini =====================
+genai.configure(api_key="AIzaSyDDc_si0A-u30KM7CkZaGKHYEEfwnkPriU")  # <-- Reemplaza aquí con tu API key
+
+# ===================== INICIALIZAR REPRODUCTOR (gTTS + pygame) =====================
+# Inicializa pygame mixer; si falla por headless, revisa entorno.
+try:
+    pygame.mixer.init()
+except Exception as e:
+    print("pygame.mixer.init() error:", e)
+
+audio_actual = None
+detener_voz_flag = False
 
 # ===================== CONEXIÓN A BASE DE DATOS (SQL Server) =====================
 MSSQL_DRIVER = "ODBC Driver 17 for SQL Server"
@@ -29,14 +51,9 @@ MSSQL_SERVER = "FER\\FERNANDA"
 MSSQL_DATABASE = "LF01"
 MSSQL_UID = "sa"
 MSSQL_PWD = "Luisa3022679731"
-USE_TRUSTED_CONNECTION = False       
-
-# ===================== CONFIG GOOGLE API (opcional) =====================
-GOOGLE_API_KEY = "AIzaSyDsScOCMHpFi76-w100NMXzpe6taoQrQWc"
-GOOGLE_CX = "6643044f0efe44c19"
+USE_TRUSTED_CONNECTION = False
 
 # ===================== FUNCIONES AUXILIARES BASE DE DATOS =====================
-
 def get_user_info(user_id):
     """Obtiene información del usuario desde la base de datos."""
     con = get_connection()
@@ -140,58 +157,99 @@ def fetch_chats_for_user(user_id):
         })
     return result
 
-# ===================== FUNCIONES AUXILIARES DE TEXTO Y GOOGLE =====================
-def limpiar_consulta(consulta):
-    """Limpia un comando de voz para mejorar búsqueda en Google"""
-    consulta = consulta.lower()
-    reemplazos = {
-        "qué es": "definición de",
-        "que es": "definición de",
-        "cuál es": "",
-        "cual es": "",
-        "dime": "",
-        "explícame": "",
-        "busca en google": "",
-        "búscame en google": "",
-        "busca": "",
-        "búscame": ""
-    }
-    for k, v in reemplazos.items():
-        consulta = consulta.replace(k, v)
-    return consulta.strip()
+# ===================== UTILIDADES TTS (gTTS + pygame) =====================
+def limpiar_texto_para_voz(texto: str) -> str:
+    """Elimina símbolos innecesarios para la voz."""
+    if not texto:
+        return ""
+    return re.sub(r'[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9,.!?: ]+', '', texto)
 
-def buscar_google(query):
-    """Hace una búsqueda en Google usando Custom Search API"""
-    query = f"{query} -site:wikipedia.org"
-    url = "https://www.googleapis.com/customsearch/v1"
-    params = {"key": GOOGLE_API_KEY, "cx": GOOGLE_CX, "q": query, "num": 3, "hl": "es"}
+def dividir_en_frases(texto: str, max_len: int = 150):
+    """Divide en fragmentos amigables para gTTS"""
+    texto_limpio = limpiar_texto_para_voz(texto)
+    frases = []
+    inicio = 0
+    while inicio < len(texto_limpio):
+        corte = None
+        delimitadores = ['.', '!', '?', ',', ':']
+        for signo in delimitadores:
+            idx = texto_limpio.find(signo, inicio)
+            if idx != -1 and (corte is None or idx < corte):
+                corte = idx
+        if corte is None or corte - inicio > max_len:
+            palabras = texto_limpio[inicio:].split()
+            frag = ''
+            for palabra in palabras:
+                if len(frag) + len(palabra) + 1 > max_len:
+                    break
+                frag += (palabra + ' ')
+            frag = frag.strip()
+            if frag:
+                frases.append(frag)
+            inicio += len(frag)
+            if not frag:
+                break
+        else:
+            frag = texto_limpio[inicio:corte+1].strip()
+            if frag:
+                frases.append(frag)
+            inicio = corte + 1
+    return frases
+
+def detener_voz():
+    """Marca bandera para detener y para de inmediato si hay reproducción."""
+    global detener_voz_flag, audio_actual
+    detener_voz_flag = True
     try:
-        resp = requests.get(url, params=params)
-        data = resp.json()
-        if "items" not in data:
-            return "No encontré resultados en Google.", "No encontré resultados en Google."
-        voz_respuesta, chat_respuesta = "", ""
-        for item_google in data["items"]:
-            titulo = item_google.get("title", "")
-            snippet = item_google.get("snippet", "")
-            link = item_google.get("link", "")
-            voz_respuesta += f"{titulo}. {snippet} "
-            chat_respuesta += f"{titulo}<br>{snippet}<br><a href='{link}' target='_blank'>{link}</a><br><br>"
-        return voz_respuesta.strip(), chat_respuesta.strip()
+        if audio_actual and pygame.mixer.get_busy():
+            pygame.mixer.stop()
     except Exception as e:
-        return f"Error buscando en Google: {e}", f"Error buscando en Google: {e}"
+        print("Detener voz error:", e)
 
-# ===================== CONFIGURACIÓN DE VOZ =====================
-voz = pyttsx3.init()
-voces = voz.getProperty('voices')
-for v in voces:
-    if "Sabina" in v.name or "es" in str(v.languages).lower():
-        voz.setProperty('voice', v.id)
-        break
-voz.setProperty('rate', 170)   # Velocidad
-voz.setProperty('volume', 1.0) # Volumen máximo
+def hablar_por_frases(texto: str):
+    """Convierte texto a voz por fragmentos y reproduce (gTTS + pygame)."""
+    global audio_actual, detener_voz_flag
+    frases = dividir_en_frases(texto)
+    for frag in frases:
+        if detener_voz_flag:
+            detener_voz_flag = False
+            break
+        frag = frag.strip()
+        if not frag:
+            continue
+        try:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            tts = gTTS(text=frag, lang='es')
+            tts.save(tmp.name)
+            tmp.close()
+            audio_actual = pygame.mixer.Sound(tmp.name)
+            audio_actual.play()
+            while pygame.mixer.get_busy():
+                if detener_voz_flag:
+                    pygame.mixer.stop()
+                    break
+                time.sleep(0.05)
+        except Exception as e:
+            print("Error reproduciendo audio:", e)
+        finally:
+            try:
+                os.remove(tmp.name)
+            except Exception:
+                pass
 
-# ===================== VARIABLES GLOBALES =====================
+# ===================== INTEGRACIÓN CON GEMINI =====================
+def obtener_respuesta_ia(prompt: str) -> str:
+    """Usa Gemini para generar la respuesta en texto."""
+    try:
+        modelo = genai.GenerativeModel("gemini-2.0-flash")
+        respuesta = modelo.generate_content(prompt)
+        # respuesta.text es la propiedad de texto devuelta
+        return respuesta.text if hasattr(respuesta, "text") else str(respuesta)
+    except Exception as e:
+        print("Error al conectar con Gemini:", e)
+        return "⚠️ No pude conectar con la IA. Revisa la API key o tu conexión."
+
+# ===================== VARIABLES GLOBALES Y CONFIG. VOZ =====================
 recognizer = sr.Recognizer()
 mic = sr.Microphone()
 icono = None
@@ -203,12 +261,15 @@ frames_permanente, duraciones_permanente = [], []
 current_user_id_lock = threading.Lock()
 current_user_id = None
 chat_historial = []
-voz_lock = threading.Lock()
-escuchando = True  # Control de escucha activa
+escuchando = True
 
-# ===================== FUNCIÓN PARA HABLAR =====================
-def hablar(texto):
-    """El asistente habla y guarda mensaje en historial y BD"""
+# ===================== FUNCIÓN PARA HABLAR Y GUARDAR HISTORIAL (CENTRAL) =====================
+def hablar_y_guardar(texto: str):
+    """Habla por voz (thread) y guarda el mensaje en BD y en historial local."""
+    # Lanzar hilo de TTS
+    threading.Thread(target=hablar_por_frases, args=(texto,), daemon=True).start()
+
+    # Guardar en historial local y BD si hay user actual
     chat_historial.append({"tipo": "alira", "mensaje": texto})
     with current_user_id_lock:
         uid = current_user_id
@@ -217,90 +278,137 @@ def hablar(texto):
             insert_chat(uid, "alira", texto)
         except Exception as e:
             print("Error guardando chat (alira):", e)
-    def run():
-        with voz_lock:
-            voz.say(texto)
-            voz.runAndWait()
-    threading.Thread(target=run, daemon=True).start()
 
 # ===================== FUNCIÓN DE ESCUCHA (RECONOCIMIENTO DE VOZ) =====================
-def escuchar():
-    """Escucha comandos de voz y ejecuta acciones"""
+def escuchar_loop():
+    """Loop continuo de escucha que procesa comandos de voz y envía a IA cuando aplica."""
     global escuchando
+    r = recognizer
     with mic as source:
-        recognizer.adjust_for_ambient_noise(source)
+        r.adjust_for_ambient_noise(source)
     while escuchando:
         with mic as source:
-            print("🎧 Escuchando...")
-            audio = recognizer.listen(source)
+            try:
+                print("🎧 Escuchando...")
+                audio = r.listen(source, timeout=5, phrase_time_limit=7)
+            except Exception:
+                continue
         try:
-            texto = recognizer.recognize_google(audio, language="es-ES").lower()
+            texto = r.recognize_google(audio, language="es-ES").lower()
+            print("Reconocido:", texto)
             if not texto.startswith(PALABRA_ACTIVADORA):
                 continue
             comando = texto.replace(PALABRA_ACTIVADORA, "", 1).strip()
 
-            # Guardar mensaje en historial y BD
-            chat_historial.append({"tipo": "usuario", "mensaje": comando})
-            with current_user_id_lock:
-                uid = current_user_id
-            if uid:
-                try:
-                    insert_chat(uid, "usuario", comando)
-                except Exception as e:
-                    print("Error guardando chat (usuario):", e)
-
-            # === Comandos posibles ===
-            if "estoy cansado" in comando:
-                hablar("Puedo ayudarte a organizar tu jornada con más calma.")
-            elif "youtube" in comando:
-                hablar("Abriendo YouTube")
+            # === COMANDOS DE APPS (NO se registran en chat) ===
+            if "youtube" in comando:
+                hablar_y_guardar("Abriendo YouTube")
                 webbrowser.open("https://www.youtube.com")
             elif "google" in comando and "busca" not in comando:
-                hablar("Abriendo Google")
+                hablar_y_guardar("Abriendo Google")
                 webbrowser.open("https://www.google.com")
             elif "netflix" in comando:
-                hablar("Abriendo Netflix")
+                hablar_y_guardar("Abriendo Netflix")
                 webbrowser.open("https://www.netflix.com")
             elif "explorador" in comando or "archivos" in comando:
-                hablar("Abriendo explorador de archivos")
+                hablar_y_guardar("Abriendo explorador de archivos")
                 os.startfile("explorer")
             elif "configuración" in comando or "configuracion" in comando:
-                hablar("Abriendo configuración")
+                hablar_y_guardar("Abriendo configuración")
                 subprocess.run("start ms-settings:", shell=True)
-            elif "busca en google" in comando or "búscame en google" in comando:
-                consulta = comando.replace("busca en google", "").replace("búscame en google", "").strip()
+            elif "word" in comando:
+                hablar_y_guardar("Abriendo Word")
+                try:
+                    os.startfile("winword")
+                except Exception:
+                    hablar_y_guardar("Word no está instalado. Abriendo Word online.")
+                    webbrowser.open("https://office.live.com/start/Word.aspx")
+            elif "excel" in comando:
+                hablar_y_guardar("Abriendo Excel")
+                try:
+                    os.startfile("excel")
+                except Exception:
+                    hablar_y_guardar("Excel no está instalado. Abriendo Excel online.")
+                    webbrowser.open("https://office.live.com/start/Excel.aspx")
+            elif "powerpoint" in comando:
+                hablar_y_guardar("Abriendo PowerPoint")
+                try:
+                    os.startfile("powerpnt")
+                except Exception:
+                    hablar_y_guardar("PowerPoint no está instalado. Abriendo PowerPoint online.")
+                    webbrowser.open("https://office.live.com/start/PowerPoint.aspx")
+            elif "visual studio" in comando or "visual studio code" in comando or "vscode" in comando:
+                hablar_y_guardar("Abriendo Visual Studio Code")
+                try:
+                    os.startfile("code")
+                except Exception:
+                    hablar_y_guardar("No se encontró Visual Studio Code. Abriendo VS Code web.")
+                    webbrowser.open("https://vscode.dev")
+            elif "zoom" in comando:
+                hablar_y_guardar("Abriendo Zoom")
+                try:
+                    os.startfile("zoom")
+                except Exception:
+                    hablar_y_guardar("Zoom no está instalado. Abriendo Zoom web.")
+                    webbrowser.open("https://zoom.us/signin")
+            elif "chat gpt" in comando:
+                hablar_y_guardar("Abriendo ChatGPT")
+                webbrowser.open("https://chat.openai.com")
+            elif "busca en google" in comando or "búscame en google" in comando or "buscame en google" in comando:
+                consulta = comando
+                consulta = consulta.replace("busca en google", "").replace("búscame en google", "").replace("buscame en google", "").strip()
                 if consulta:
-                    consulta_limpia = limpiar_consulta(consulta)
-                    hablar(f"Buscando en Google: {consulta_limpia}")
-                    voz_texto, chat_texto = buscar_google(consulta_limpia)
-                    chat_historial.append({"tipo": "alira", "mensaje": chat_texto})
-                    if uid:
-                        try:
-                            insert_chat(uid, "alira", chat_texto)
-                        except Exception as e:
-                            print("Error guardando chat (alira google):", e)
-                    hablar(voz_texto)
+                    hablar_y_guardar(f"Buscando en google: {consulta}")
+                    url_busqueda = f"https://www.google.com/search?q={consulta.replace(' ', '+')}"
+                    webbrowser.open(url_busqueda)
                 else:
-                    hablar("¿Qué quieres que busque en Google?")
+                    hablar_y_guardar("¿Qué quieres que busque en Google?")
             elif PALABRA_FINAL in comando:
-                hablar("Gracias a ti")
-        except Exception:
+                hablar_y_guardar("Gracias a ti")
+            else:
+                # === Comandos que SÍ se registran en chat ===
+                with current_user_id_lock:
+                    uid = current_user_id
+                # Guardar mensaje del usuario en BD
+                if uid:
+                    try:
+                        insert_chat(uid, "usuario", comando)
+                    except Exception as e:
+                        print("Error guardando chat (usuario):", e)
+
+                # Preguntar a la IA
+                respuesta = obtener_respuesta_ia(comando)
+                hablar_y_guardar_con_bubble(respuesta)
+
+
+        except Exception as e:
+            print("Error en reconocimiento de voz:", e)
             continue
 
 # ===================== INTERFAZ GRÁFICA (TK + BANDEJA DEL SISTEMA) =====================
+# ================== VENTANA PRINCIPAL (GIF) ==================
 def crear_ventana():
-    """Crea la ventana flotante animada con GIF y el icono de bandeja"""
-    global ventana, canvas, frames_saludo, duraciones_saludo, frames_permanente, duraciones_permanente, icono, escuchando
+    """Crea la ventana flotante tipo chat para mostrar y escribir mensajes"""
+    global ventana, canvas, frames_saludo, duraciones_saludo, frames_permanente, duraciones_permanente
+    global bubble_window, bubble_text, bubble_entry, escuchar_thread, icono
+
+    # ----------------- VENTANA PRINCIPAL -----------------
+    if 'ventana' in globals() and ventana and ventana.winfo_exists():
+        ventana.deiconify()
+        ventana.lift()
+        return
+
     ventana = tk.Tk()
-    ventana.overrideredirect(True)  # Sin bordes
+    ventana.overrideredirect(True)
     ventana.geometry(f"{TAMANO_IMAGEN[0]}x{TAMANO_IMAGEN[1]}+{POSICION_VENTANA[0]}+{POSICION_VENTANA[1]}")
     ventana.wm_attributes("-topmost", True)
     ventana.config(bg='white')
     ventana.wm_attributes('-transparentcolor', 'white')
-    canvas = tk.Canvas(ventana, width=TAMANO_IMAGEN[0], height=TAMANO_IMAGEN[1], bg="white", highlightthickness=0)
+
+    canvas = tk.Canvas(ventana, width=TAMANO_IMAGEN[0], height=TAMANO_IMAGEN[1],
+                       bg="white", highlightthickness=0)
     canvas.pack()
 
-    # Cargar GIFs (saludo y permanente)
     def cargar_gif(path):
         img = Image.open(path)
         frames, duraciones = [], []
@@ -313,54 +421,289 @@ def crear_ventana():
             duraciones.append(frame.info.get('duration', 80))
         return frames, duraciones
 
-    frames_saludo, duraciones_saludo = cargar_gif(GIF_SALUDO)
-    frames_permanente, duraciones_permanente = cargar_gif(GIF_PERMANENTE)
+    # Cargar GIFs
+    try:
+        frames_saludo, duraciones_saludo = cargar_gif(GIF_SALUDO)
+        frames_permanente, duraciones_permanente = cargar_gif(GIF_PERMANENTE)
+    except Exception as e:
+        print("Error cargando GIFs:", e)
 
-    # Animar GIF en bucle
+    frame_actual = 0
+    usar_saludo = True
+
     def animar():
-        global frame_actual
+        nonlocal frame_actual
         frames = frames_saludo if usar_saludo else frames_permanente
         duraciones = duraciones_saludo if usar_saludo else duraciones_permanente
-        canvas.delete("all")
-        canvas.create_image(TAMANO_IMAGEN[0]//2, TAMANO_IMAGEN[1]//2, anchor=tk.CENTER, image=frames[frame_actual])
-        delay = duraciones[frame_actual]
-        frame_actual = (frame_actual + 1) % len(frames)
-        ventana.after(delay, animar)
+        if frames:
+            canvas.delete("all")
+            frame = frames[frame_actual % len(frames)]
+            canvas.create_image(TAMANO_IMAGEN[0]//2, TAMANO_IMAGEN[1]//2, anchor=tk.CENTER, image=frame)
+            delay = duraciones[frame_actual % len(duraciones)] if duraciones else 80
+            frame_actual = (frame_actual + 1) % len(frames)
+            ventana.after(delay, animar)
+        else:
+            ventana.after(200, animar)
 
-    # Funciones bandeja
+    # ==================== FUNCIONES BANDEJA ====================
     def ocultar_ventana():
-        ventana.withdraw()
-        if icono:
-            icono.visible = True
+        try:
+            ventana.withdraw()
+            if icono:
+                icono.visible = True
+        except Exception:
+            pass
 
     def restaurar_ventana(icon, item):
-        ventana.deiconify()
-        icon.visible = False
+        try:
+            ventana.deiconify()
+            icon.visible = False
+        except Exception:
+            pass
 
     def salir_app(icon, item):
         global escuchando
         escuchando = False
-        ventana.destroy()
-        icon.stop()
+        try:
+            ventana.destroy()
+        except Exception:
+            pass
+        try:
+            icon.stop()
+        except Exception:
+            pass
 
-    # Crear icono en bandeja
-    icono_img = Image.open(GIF_PERMANENTE).resize((32,32))
-    icono = pystray.Icon("Lucy", icono_img, menu=pystray.Menu(
+    try:
+        icono_img = Image.open(GIF_PERMANENTE).resize((32, 32))
+    except Exception:
+        icono_img = Image.new("RGBA", (32, 32), (255, 0, 0, 0))
+    icono = pystray.Icon("Iris", icono_img, menu=pystray.Menu(
         item("Restaurar", restaurar_ventana),
         item("Salir", salir_app)
     ))
     threading.Thread(target=icono.run, daemon=True).start()
 
-    # Eventos de la ventana
-    canvas.bind("<Button-1>", lambda e: setattr(ventana, 'x', e.x) or setattr(ventana, 'y', e.y))
-    canvas.bind("<B1-Motion>", lambda e: ventana.geometry(f"+{ventana.winfo_pointerx()-ventana.x}+{ventana.winfo_pointery()-ventana.y}"))
+    # ==================== EVENTOS: MOVER ====================
+    def guardar_pos(e):
+        ventana.x = e.x
+        ventana.y = e.y
+
+    def mover_ventana(e):
+        nueva_x = ventana.winfo_pointerx() - ventana.x
+        nueva_y = ventana.winfo_pointery() - ventana.y
+        ventana.geometry(f"+{nueva_x}+{nueva_y}")
+        mover_burbuja_con_gif()  # mover la burbuja con el GIF
+
+    canvas.bind("<Button-1>", guardar_pos)
+    canvas.bind("<B1-Motion>", mover_ventana)
     canvas.bind("<Double-Button-1>", lambda e: ocultar_ventana())
 
-    # Hilos de escucha y saludo inicial
-    threading.Thread(target=escuchar, daemon=True).start()
-    threading.Thread(target=lambda: hablar("Hola soy Iris, estoy lista para ayudarte"), daemon=True).start()
+    # Hilo de escucha (voz)
+    escuchar_thread = threading.Thread(target=escuchar_loop, daemon=True)
+    escuchar_thread.start()
+
+    # Saludo inicial
+    threading.Thread(target=hablar_y_guardar, args=("Hola, soy Iris. Estoy lista para ayudarte.",), daemon=True).start()
+
     animar()
     ventana.mainloop()
+
+# ==================== BURBUJA (VIÑETA SOBRE EL GIF) ====================
+bubble_win = None
+bubble_label = None
+bubble_entry = None
+bubble_send_btn = None
+bubble_close_btn = None
+bubble_stop_btn = None
+bubble_anim_id = None
+bubble_visible = False
+
+def bubble_position_relative():
+    """Calcula la posición para que la burbuja quede justo encima del GIF."""
+    if ventana:
+        x = ventana.winfo_x()
+        y = ventana.winfo_y()
+        w = TAMANO_IMAGEN[0]
+        h = TAMANO_IMAGEN[1]
+        return (x + w//2 - 160, y - 160)
+    return POSICION_VENTANA
+
+def create_bubble_window():
+    """Crea la burbuja del chat (viñeta) con scroll y botones fijos"""
+    global bubble_win, bubble_label, bubble_entry, bubble_send_btn, bubble_close_btn, bubble_stop_btn, bubble_visible, bubble_text
+
+    if bubble_win and bubble_win.winfo_exists():
+        bubble_win.deiconify()
+        bubble_win.lift()
+        return
+
+    pos = bubble_position_relative()
+    bubble_win = tk.Toplevel()
+    bubble_win.overrideredirect(True)
+    bubble_win.wm_attributes("-topmost", True)
+    bubble_win.config(bg="#f7f7f8")
+    bubble_win.geometry(f"340x200+{pos[0]}+{pos[1]}")  # tamaño fijo
+
+    # -------------------- GRID PRINCIPAL --------------------
+    bubble_win.rowconfigure(0, weight=1)  # Text se expande
+    bubble_win.rowconfigure(1, weight=0)  # fila de botones fija
+    bubble_win.columnconfigure(0, weight=1)
+
+    # -------------------- AREA DE TEXTO CON SCROLL --------------------
+    text_frame = tk.Frame(bubble_win, bg="#f7f7f8")
+    text_frame.grid(row=0, column=0, sticky="nsew")
+
+    scrollbar = tk.Scrollbar(text_frame)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    bubble_text = tk.Text(
+        text_frame,
+        wrap=tk.WORD,
+        yscrollcommand=scrollbar.set,
+        bg="#f7f7f8",
+        fg="#111",
+        font=("Arial", 10),
+        padx=8,
+        pady=8,
+        state=tk.DISABLED
+    )
+    bubble_text.pack(fill=tk.BOTH, expand=True)
+    scrollbar.config(command=bubble_text.yview)
+
+    # -------------------- BARRA INFERIOR FIJA --------------------
+    bottom = tk.Frame(bubble_win, bg="#f7f7f8")
+    bottom.grid(row=1, column=0, sticky="ew", pady=(4,4))
+    bottom.columnconfigure(0, weight=1)  # Entry se expande
+
+    bubble_entry = tk.Entry(bottom, font=("Arial", 10))
+    bubble_entry.grid(row=0, column=0, sticky="ew", padx=(4,4))
+
+    bubble_send_btn = tk.Button(bottom, text="Enviar", command=bubble_send, bg="#00bfff", fg="white")
+    bubble_send_btn.grid(row=0, column=1, padx=(0, 4))
+
+    bubble_stop_btn = tk.Button(bottom, text="⏹", command=detener_voz, bg="#ff5555", fg="white")
+    bubble_stop_btn.grid(row=0, column=2, padx=(0, 4))
+
+    bubble_close_btn = tk.Button(bottom, text="❌", command=hide_bubble, bg="#dddddd")
+    bubble_close_btn.grid(row=0, column=3, padx=(0,4))
+
+    bubble_visible = True
+
+
+def mover_burbuja_con_gif():
+    if bubble_win and bubble_win.winfo_exists() and bubble_visible:
+        pos = bubble_position_relative()
+        bubble_win.geometry(f"+{pos[0]}+{pos[1]}")
+
+def show_bubble_with_text(text, animate=True):
+    if not (bubble_win and bubble_win.winfo_exists()):
+        create_bubble_window()
+    try:
+        bubble_win.deiconify()
+        bubble_win.lift()
+    except Exception:
+        pass
+
+    if animate:
+        _animate_text(0, text)
+    else:
+        bubble_text.config(state=tk.NORMAL)
+        bubble_text.delete("1.0", tk.END)
+        bubble_text.insert(tk.END, text)
+        bubble_text.config(state=tk.DISABLED)
+
+def _animate_text(idx, text):
+    global bubble_anim_id
+    if idx <= len(text):
+        bubble_text.config(state=tk.NORMAL)
+        bubble_text.delete("1.0", tk.END)
+        bubble_text.insert(tk.END, text[:idx])
+        bubble_text.config(state=tk.DISABLED)
+        bubble_anim_id = ventana.after(18, _animate_text, idx + 1, text)
+    else:
+        bubble_anim_id = None
+
+def hide_bubble():
+    global bubble_visible
+    if bubble_win and bubble_win.winfo_exists():
+        bubble_win.withdraw()
+    bubble_visible = False
+
+def bubble_send():
+    texto = bubble_entry.get().strip()
+    if not texto:
+        return
+    bubble_entry.delete(0, tk.END)
+
+    # Enviar mensaje al backend para guardar y procesar IA
+    def enviar_y_responder(prompt):
+        try:
+            user_id = None
+            with current_user_id_lock:
+                user_id = current_user_id
+            if not user_id:
+                return
+
+            # Llamada al endpoint /send_message
+            import requests
+            resp = requests.post("http://127.0.0.1:5000/send_message", json={"message": prompt})
+            if resp.status_code != 200:
+                print("Error enviando mensaje a /send_message:", resp.text)
+
+            # Mostrar el mensaje del usuario en la burbuja
+            agregar_mensaje(f"Tú: {prompt}")
+
+        except Exception as e:
+            print("Error en bubble_send:", e)
+
+    threading.Thread(target=enviar_y_responder, args=(texto,), daemon=True).start()
+
+
+    # Respuesta IA
+    def responder(prompt):
+        show_bubble_with_text("Escribiendo...", animate=False)
+        respuesta = obtener_respuesta_ia(prompt)
+        hablar_y_guardar_con_bubble(respuesta)
+
+    threading.Thread(target=responder, args=(texto,), daemon=True).start()
+
+def hablar_y_guardar_con_bubble(texto):
+    try:
+        show_bubble_with_text(texto, animate=True)
+    except Exception as e:
+        print("Error mostrando burbuja:", e)
+    try:
+        hablar_y_guardar(texto)
+    except Exception as e:
+        print("Error al hablar o guardar:", e)
+
+def limpiar_texto(widget):
+    try:
+        widget.config(state=tk.NORMAL)
+        widget.delete("1.0", tk.END)
+        widget.config(state=tk.DISABLED)
+    except Exception as e:
+        print("Error en limpiar_texto:", e)
+
+def agregar_mensaje(texto):
+    global bubble_text, bubble_window
+    try:
+        if not (bubble_window and bubble_window.winfo_exists()):
+            create_bubble_window()
+    except Exception:
+        pass
+
+    try:
+        if not bubble_text:
+            return
+        bubble_text.config(state=tk.NORMAL)
+        bubble_text.insert(tk.END, texto + "\n\n")
+        bubble_text.see(tk.END)
+        bubble_text.config(state=tk.DISABLED)
+    except Exception as e:
+        print("Error en agregar_mensaje:", e)
+
+
 
 # ===================== FLASK WEB APP =====================
 app = Flask(__name__)
@@ -373,6 +716,21 @@ def login():
         username_or_email = request.form['username']
         password = request.form['password']
 
+        # ===  VALIDAR reCAPTCHA ===
+        recaptcha_response = request.form.get('g-recaptcha-response')
+        secret_key = "6LcWmeorAAAAANAU3YgXlw8X_9fveTarCRZIzoEv"  # 🔑 Reemplázala con tu clave secreta (de Google)
+        verify_url = "https://www.google.com/recaptcha/api/siteverify"
+        data = {"secret": secret_key, "response": recaptcha_response}
+
+        import requests  # por si no lo tienes arriba
+        response = requests.post(verify_url, data=data)
+        result = response.json()
+
+        if not result.get("success"):
+            error = "Por favor, verifica el reCAPTCHA antes de continuar."
+            return render_template('login.html', error=error)
+
+        # === Si el CAPTCHA fue validado, sigue con el login normal ===
         con = get_connection()
         cur = con.cursor()
         cur.execute("SELECT id, username, password FROM users WHERE username = ? OR email = ?", (username_or_email, username_or_email))
@@ -389,11 +747,10 @@ def login():
                 return render_template('login.html', error=error)
             session['user_id'] = db_id  # <-- Guarda el id numérico
             return redirect(url_for('home'))
+
     return render_template('login.html', error=error)
 
-# Si quieres cubrir el caso de ambos incorrectos explícitamente:
-# Si el usuario/correo no existe y la contraseña tampoco coincide con ningún usuario, puedes mostrar:
-# "El usuario y la contraseña son incorrectos."
+
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -584,6 +941,44 @@ def reset_password(token):
     con.close()
     return render_template('reset_password.html', token=token)
 
+
+
+# ===================== NUEVA RUTA: RECIBIR MENSAJES DESDE EL FRONT (WEB) =====================
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    """
+    Endpoint que el frontend puede usar para enviar un mensaje escrito desde la web.
+    Guarda en BD y dispara la IA + TTS para que la ventana flotante responda por voz.
+    Body JSON: { "message": "texto" }
+    """
+    if "user_id" not in session:
+        return jsonify({"error": "No autorizado"}), 401
+    data = request.get_json() or {}
+    mensaje = data.get("message", "").strip()
+    if not mensaje:
+        return jsonify({"error": "Mensaje vacío"}), 400
+
+    user_id = session["user_id"]
+    try:
+        # Guardar mensaje del usuario
+        insert_chat(user_id, "usuario", mensaje)
+    except Exception as e:
+        print("Error guardando mensaje web:", e)
+
+    # Generar respuesta IA (en hilo) para no bloquear al frontend
+    def responder_y_hablar(prompt, uid):
+        try:
+            respuesta = obtener_respuesta_ia(prompt)
+            # Guardar respuesta en BD y hablarla (la función hablar_y_guardar guarda en BD también)
+            hablar_y_guardar_con_bubble(respuesta)
+
+        except Exception as e:
+            print("Error en responder_y_hablar:", e)
+
+    threading.Thread(target=responder_y_hablar, args=(mensaje, user_id), daemon=True).start()
+    return jsonify({"ok": True})
+
 # ===================== EJECUCIÓN PRINCIPAL =====================
 if __name__ == "__main__":
-    app.run(debug=False)
+    # Nota: ejecuta la app Flask; la ventana flotante se lanza cuando el usuario pulsa activar desde la web (/activar).
+    app.run(debug=True)

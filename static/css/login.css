@@ -2,470 +2,354 @@
 @import url('https://fonts.cdnfonts.com/css/poppins');
 @import url('https://fonts.cdnfonts.com/css/bimbo');
 
+/* ===== GENERAL ===== */
 body {
-    font-family: 'Poppins', sans-serif;
-    background-color: #000000;
-    color: #f0ecec;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    width: 100%;
-    overflow: hidden;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #0b0b0b, #2c0000, #7a0b0b, #a51212, #ed5818);
+  background-size: 200% 200%;
+  animation: gradientShift 12s ease infinite;
+  color: #fff;
 }
-/* Logo iris */
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ===== HEADER ===== */
 .header {
-    position: absolute;
-    top: 0;
-    width: 100%;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    background: rgba(60, 59, 59, 0.5);
-    backdrop-filter: blur(10px);
+  padding: 0 5rem;
+  text-align: center;
 }
 
 .header-content {
-    display: flex;
-    align-items: center;
-    position: relative;
-    
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
 }
 
-.header-content .circulo {
-    height: 38px;
-    width: 60px;
-}
 
 .title-he {
-    font-family: 'Devil Breeze', sans-serif;
-    color: #b41616;
-    font-size: 2rem;
-    margin: 0;
-    position: relative;
-    right: 10px;
-    top: 3.5px;
+  font-family: 'Devil Breeze';
+  font-size: 2.5rem;
+  color: #fbe7e7;
 }
 
-/* modelado 3d */
-
+/* ===== CONTENEDOR GENERAL ===== */
 .page-container {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 0;
+  flex: 1;
 }
 
-.model-container {
-    flex-shrink: 0;
-    width: 00px;
-    height: 400px;
-    position: relative;
-    left: 500px; 
-    top: 150px;
-    z-index: 1;
-}
 
-.model-container model-viewer {
-    width: 100%;
-    height: 100%;
-}
-/* Contenedor del formulario de login */
+/* ===== LOGIN/REGISTRO ===== */
 .login-container {
-    backdrop-filter: blur(15px);
-    padding: 3rem;
-    width: 40%;
-    min-height: 80vh;  /* altura mínima */
-    display: flex;
-    justify-content: center; /* centra horizontal */
-    align-items: center;     /* centra vertical */
-    position: relative;
-    overflow: hidden;
-}
-
-h2 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    font-size: 25px;
-    color: #b41616;
-}
-
-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    z-index: 10;
-}
-
-input {
-    padding: 10px;
-    border: none;
-    border-bottom: 2px solid rgb(91, 82, 82);
-    background: transparent;
-    color: #fff;
-    font-size: 15px;
-    display: block;
-    margin: 0 auto;
-    outline: none;
-}
-
-input::placeholder {
-    color: rgba(255, 255, 255, 0.499);
-}
-
-/* ======== FIX PARA AUTOCOMPLETADO (inputs usuario/contraseña) ======== */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0px 1000px #1c1c1c inset !important; /* gris bajito */
-    box-shadow: 0 0 0px 1000px #1c1c1c inset !important;          /* gris bajito */
-    -webkit-text-fill-color: #fff !important;  /* texto blanco */
-    caret-color: #fff !important;              /* cursor blanco */
-    border-bottom: 2px solid rgb(91, 82, 82);  /* mantiene borde inferior */
-    transition: background-color 9999s ease-in-out 0s !important;
-}
-
-button {
-    width: 300px;
-    padding: 10px;
-    background: transparent;
-    border: 1px solid rgb(91, 82, 82);
-    color: white;
-    font-weight: bold;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin: 2rem auto;
-    outline: none;
-}
-
-/* ===================== FORM PANELS ===================== */
-
-.info-message {
-    text-align: center;
-    color: #b41616;
-    font-size: 14px;
-    margin-bottom: 10px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 320px;
+  max-width: 100%;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+  flex-shrink: 0;
 }
 
 .form-wrapper {
-    width: 100%;
-    position: relative;
+  width: 100%;
 }
 
-/* Cada panel (login o registro) */
+/* FORM PANELS */
 .form-panel {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) translateX(100%);
-    width: 100%;
-    max-width: 400px;
-    opacity: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    transition: all 0.5s ease;
+  display: none;
 }
 
-/* Panel activo centrado */
 .form-panel.active {
-    opacity: 1;
-    transform: translate(-50%, -50%) translateX(0);
+  display: block;
 }
 
+.form-panel h2 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #a29d9c60;
+  text-align: center;
+}
 
-/* === TELÉFONO CON +57 === */
-.phone-input {
-  width: 300px;
-  margin: 0 auto;
+/* INPUT FIELDS */
+.input-field, .password-field, .phone-input {
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.input-field input,
+.password-field input,
+.phone-input input[type="tel"] {
+  width: 100%;
+  padding: 0.8rem 0.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid #ffb3a7;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.input-field input::placeholder,
+.password-field input::placeholder,
+.phone-input input::placeholder {
+  color: #ffb3a7;
+}
+
+.input-field input:focus,
+.password-field input:focus,
+.phone-input input:focus {
+  border-bottom: 2px solid #fff;
+}
+
+/*Recordar credenciales*/
+.remember-me {
   display: flex;
   align-items: center;
-  gap: 8px;
+  font-size: 12px;
+  color: #ccc;
+  margin: 8px 0 12px 0;
+}
+
+.remember-me input[type="checkbox"] {
+  margin-right: 6px;
+  accent-color: #b41616;
+}
+
+/* ReCAPTCHA */
+
+.g-recaptcha {
+  display: flex;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+
+
+/* PHONE INPUT */
+.phone-input {
+  display: flex;
+  align-items: center;
 }
 
 .phone-input .country-code {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 5px;
-  border-bottom: 2px solid rgb(91, 82, 82);
-  color: rgba(255,255,255,0.85);
-  font-weight: 600;
-  background: transparent;
-  font-family: 'Poppins', sans-serif;
-  user-select: none;
+  padding: 0.8rem;
+  background: rgba(255,255,255,0.1);
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  font-size: 1rem;
+  color: #fff;
 }
 
-.phone-input #phone_local {
-  flex: 1; /* ocupa el espacio restante */
-  padding: 10px;
+.phone-input input[type="tel"] {
+  flex: 1;
+  padding: 0.8rem;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
   border: none;
-  border-bottom: 2px solid rgb(91, 82, 82);
-  background: transparent;
+  outline: none;
+  background: rgba(255,255,255,0.1);
   color: #fff;
+}
+
+/* BOTONES */
+button, .btn-submit {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border-radius: 2rem;
+  border: 1px solid #ffb3a7;
+  background-color: transparent;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover, .btn-submit:hover {
+  background-color: #540909;
+  border: none;
+}
+
+/* SWITCH LINK */
+.switch-link, .forgot-link a {
+  display: block;
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
+  color: #ffb3a7;
+  cursor: pointer;
+  text-align: center;
+}
+
+.switch-link:hover, .forgot-link a:hover {
+  color: #fff;
+}
+
+/* ===== MENSAJES ===== */
+.error-message {
+  color: #ff4b4b;
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+  text-align: left;
+  display: block;
+}
+
+.info-message {
+  color: #ffd18c;
+  font-size: 0.85rem;
+  margin-bottom: 0.8rem;
+  text-align: left;
+  display: block;
+}
+
+/* ===== TOGGLE PASSWORD ICON ===== */
+.toggle-password {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password svg {
+  stroke: #ffb3a7;
+  width: 22px;
+  height: 22px;
+}
+
+.toggle-password:hover svg {
+  stroke: #fff;
+}
+
+.eye-off {
+  display: none;
+}
+
+/* Etiquetas de los inputs */
+.input-field label,
+.phone-input label,
+.password-field label {
+  display: block;
   font-size: 15px;
+  color: #ccc;
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+}
+
+/* Asterisco rojo */
+.required {
+  color: #ef1717;
+  font-weight: bold;
+}
+
+
+
+
+/* ===== MODAL OLVIDE CONTRASEÑA ===== */
+.modal {
+  display: none;
+  position: fixed;
+  top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.75);
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #2c0000, #7a0b0b);
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  position: relative;
+  color: #fff;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+}
+
+.modal-content .close {
+  position: absolute;
+  top: 0.8rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #fff;
+}
+
+.modal-content input {
+  border-bottom: 2px solid #ffb3a7;
+  background: transparent;
+  padding: 0.8rem;
+  width: 100%;
+  color: #fff;
   outline: none;
 }
 
-/* Contenedor para el campo de contraseña */
-.password-field {
-  position: relative;
-  width: 300px; 
-  margin: 0 auto; /* Centrado como los otros inputs */
-}
-
-/* Input de contraseña ocupa todo el ancho del contenedor */
-.password-field input[type="password"],
-.password-field input[type="text"] {
-  width: 100%; 
-  box-sizing: border-box;
-  padding-right: 40px;
-}
-
-/* El ojito */
-.toggle-password {
-  position: absolute;
-  right: 10px;
-  top: 20px;
-  transform: translateY(-50%);
-  font-size: 1.2em;
-  color: #888;
-  user-select: none;
-  z-index: 2;
-  height: 22px;
-  display: flex;
-  align-items: center;
-}
-
-/* Opcional: cambia el color al pasar el mouse */
-.toggle-password:hover {
-  color: #333;
-  cursor: pointer;
-}
-
-.password-field small,
-.password-field #passwordError {
-    font-size: 10px;
-    text-align: center;
-    width: 300px;   /* se alinea con el input */
-    margin-top: 4px;
-}
-
-.password-field small {
-    color: gray;
-}
-
-.password-field #passwordError {
-    color: red;
-    display: none;
-}
-
-#passwordHelp {
-  font-size: 10px;
-  color: red;
-  margin-top: 2px;
+.modal-content input:focus {
+  border-bottom: 2px solid #fff;
 }
 
 
-
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
-}
-
-.switch-link {
-    display: block;
-    text-align: center;
-    position: relative;
-    bottom: 24px;
-    cursor: pointer;
-    color: #9f1d1d;
-    font-weight: 300;
-    font-size: 15px;
-}
-
-.switch-link:hover {
-    text-decoration: underline;
-}
-
-.error-message {
-    margin-top: 1rem;
-    padding: 0.5rem;
-    border: 1px solid red;
-    color: red;
-    border-radius: 6px;
-    text-align: center;
-    background-color: rgba(255,0,0,0.1);
-}
-
-
-
-/* ===================== FOOTER ===================== */
-footer {
-    border-top: 1px solid gray;  /* línea gris */
-    padding: 5px 10px 5px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'Poppins', sans-serif;
-    font-size: 14px;
-    color: gray; /* todos los textos en gris */
-    position: absolute;  
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;  
-}
-
-.footer-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: gray;
-}
-
-.footer-left .divider {
-    width: 1px;              /* grosor */
-    height: 20px;            /* largo de la línea */
-    background-color: gray;  /* color de la línea */
-    display: inline-block;
-}
-
-
-.footer-left img {
-    width: 35px;
-    filter: grayscale(100%) brightness(70%); /* círculo en gris */
-    position: relative;
-    right: 10px;
-}
-
-.footer-right {
-    font-weight: 500;
-    color: gray; /* texto Colombia en gris */
-
-}
-
-.footer-right span {
-    font-weight: 250;
-    font-size: 17px;
-}
-
-.footer-left h1 {
-    font-weight: 300;
-    font-size: 18px;
-    color: rgba(52, 50, 50, 0.696); /* texto IRIS en gris */
-}
-
-.footer-left h3 {
-    font-family: 'Devil Breeze', sans-serif;
-    position: relative;
-    font-size: 18px;
-    right: 25px;
-    top: 0.7px;
-    color: rgba(50, 48, 48, 0.759); /* texto Learning Factory en gris */
-
-}
-
-.input-field {
-  width: 300px;
-  margin: 0 auto;
-  position: relative;
-}
-.input-field input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Para el modal */
-.modal-content {
-  background: #232323;
-  color: #fff;
-  border-radius: 10px;
-  width: 320px;
-  margin: auto;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.4);
-  padding: 24px 20px 20px 20px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.close {
-  position: absolute;
-  right: 14px;
-  top: 10px;
-  font-size: 22px;
-  cursor: pointer;
-  color: #aaa;
-}
-#forgotForm label,
-#forgotForm input,
-#forgotForm button {
-  display: block;
-  width: 100%;
-  margin-bottom: 12px;
-}
-
-#forgotForm input {
-  background: transparent;
-  color: #fff;
-  border-bottom: 2px solid #444;
-  padding: 8px;
-}
-
-#forgotForm button {
-  background: transparent;
-  color: #eee9e9;
-  border: 1px solid #867f7f;
-  border-radius: 50px;
-  padding: 8px 0;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-#forgotForm button:hover {
-  background: #580505;
-}
-
-#forgotMessage {
-  text-align: center;
-  margin-top: 8px;
-}
-
-.forgot-link {
-  text-align: center;
-  margin-top: 12px;
-}
-
-.forgot-link a {
-  color: #cccccc;
-  text-decoration: underline;
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.forgot-link a:hover {
-  color: #ffffff;
-}
-
-.modal {
-  display: none;
-  justify-content: center;
-  align-items: center;
+.card-container {
   position: fixed;
-  z-index: 1000;
-  left: 0; top: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.6);
+  bottom: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 200px;
+  width: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  pointer-events: auto;
+}
+
+.card-container .single-card {
+  width: 250px;
+  height: 250px;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  transform: translateY(100px);
+  opacity: 0;
+  animation: entrada 1s forwards;
+  transform-origin: bottom center;
+  transition: transform 0.3s ease;
+  will-change: transform, opacity; /* ayuda a renderizado */
+  backface-visibility: hidden;     /* evita artefactos al animar */
 }
 
 
+
+/* Animación de entrada desde abajo */
+@keyframes entrada {
+  0% { transform: translate3d(0, 100px, 0); opacity: 0; }
+  100% { transform: translate3d(0, 0, 0); opacity: 1; }
+}
+
+
+/* Hover: levanta el modelo */
+.card-container .single-card:hover {
+  transform: translateY(-30px);
+  z-index: 10;
+}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cartas Animadas</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+
+  .card-container {
+    position: relative;
+    height: 200px;
+    width: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  .card-container img {
+    position: absolute;
+    bottom: -50px; /* solo se ve la mitad al inicio */
+    width: 120px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    transform: translateY(100px) rotate(0deg); /* posición inicial abajo */
+    opacity: 0;
+    animation: abanico 1s forwards;
+  }
+
+  /* Posiciones tipo abanico con delay */
+  .card1 { animation-delay: 0.1s; transform-origin: bottom center; }
+  .card2 { animation-delay: 0.2s; transform-origin: bottom center; }
+  .card3 { animation-delay: 0.3s; transform-origin: bottom center; }
+  .card4 { animation-delay: 0.4s; transform-origin: bottom center; }
+  .card5 { animation-delay: 0.5s; transform-origin: bottom center; }
+
+  /* Animación abanico */
+  @keyframes abanico {
+    0% {
+      transform: translateY(100px) rotate(0deg);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0px) rotate(var(--rotate));
+      opacity: 1;
+    }
+  }
+
+  /* Rotación tipo abanico usando variables CSS */
+  .card1 { --rotate: -20deg; left: -80px; z-index: 1; }
+  .card2 { --rotate: -10deg; left: -40px; z-index: 2; }
+  .card3 { --rotate: 0deg; left: 0px; z-index: 3; }
+  .card4 { --rotate: 10deg; left: 40px; z-index: 2; }
+  .card5 { --rotate: 20deg; left: 80px; z-index: 1; }
+
+  /* Hover efecto */
+  .card-container img:hover {
+    transform: scale(1.1) rotate(0deg);
+    z-index: 10;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="card-container">
+  <img src="https://picsum.photos/id/237/200/300" alt="Carta 1" class="card1">
+  <img src="https://picsum.photos/id/238/200/300" alt="Carta 2" class="card2">
+  <img src="https://picsum.photos/id/239/200/300" alt="Carta 3" class="card3">
+  <img src="https://picsum.photos/id/240/200/300" alt="Carta 4" class="card4">
+  <img src="https://picsum.photos/id/241/200/300" alt="Carta 5" class="card5">
+</div>
+
+</body>
+</html>

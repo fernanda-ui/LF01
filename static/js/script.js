@@ -147,7 +147,7 @@ themeToggle.addEventListener('click', () => {
 });
 
 // ========================
-// Activar Alira
+// Activar Iris
 // ========================
 const toast = document.getElementById('toast');
 document.getElementById('activateBtn').addEventListener('click', async () => {

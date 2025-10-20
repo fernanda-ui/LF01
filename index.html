@@ -1,0 +1,195 @@
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Login / Registro</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-content">
+            <img src="/static/circulo.png" alt="Logo" class="circulo">
+            <h1 class="title-he">IRIS</h1>
+        </div>
+    </header>
+
+    <!-- Contenedor general -->
+    <div class="page-container">
+        <!-- Modelo 3D a la izquierda -->
+        <div class="model-container">
+           <model-viewer src="/static/logo.glb" 
+              alt="Personaje Iris" 
+              auto-rotate 
+              camera-controls 
+              ar
+              camera-orbit="120deg 70deg 8m"
+              style="width:200px; height:400px;">
+           </model-viewer>
+        </div>
+
+        <!-- Contenedor de login/registro -->
+        <div class="login-container">
+            <div class="form-wrapper">
+                <!-- LOGIN PANEL -->
+                <div class="form-panel iniciar active" id="loginPanel">
+                    <h2>Iniciar Sesión</h2>
+                    
+                    {% if request.args.get('suggested') %}
+<div class="info-message">
+  Tu nombre de usuario es: {{ request.args.get('suggested') }}
+</div>
+{% endif %}
+{% if error %}
+  <div class="error-message">{{ error }}</div>
+{% endif %}
+
+                    <form method="POST" action="/login" autocomplete="on">
+                        <!-- Ahora acepta usuario o correo -->
+                        <div class="input-field">
+                          <input type="text" id="login_username" name="username" placeholder="Usuario o Correo" autocomplete="username" required value="{{ request.args.get('suggested', '') }}">
+                        </div>
+                        <div class="input-field">
+                          <input type="password" id="login_password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
+                          <span class="toggle-password" onclick="togglePassword('login_password', this)" aria-label="Mostrar/Ocultar contraseña">
+                            <!-- Ojo abierto SVG -->
+                            <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+                              <path stroke="#888" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                              <circle cx="12" cy="12" r="3" stroke="#888" stroke-width="2"/>
+                            </svg>
+                            <!-- Ojo cerrado SVG (tachado), oculto por defecto -->
+                            <svg class="eye-icon eye-off" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" style="display:none;">
+                              <path stroke="#888" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                              <circle cx="12" cy="12" r="3" stroke="#888" stroke-width="2"/>
+                              <line x1="4" y1="20" x2="20" y2="4" stroke="#888" stroke-width="2"/>
+                            </svg>
+                          </span>
+                        </div>
+                        <button type="submit">Entrar</button>
+                    </form>
+                    <div class="switch-link" onclick="showRegister()">¿No tienes cuenta? Regístrate aquí</div>
+                    <!-- NUEVO: Enlace para olvidar contraseña -->
+                    <div class="forgot-link">
+                      <a href="#" onclick="showForgotModal(); return false;">¿Olvidaste tu contraseña?</a>
+                    </div>
+                </div>
+
+                <!-- REGISTER PANEL -->
+                <div class="form-panel register" id="registerPanel">
+                    <h2>Regístrate</h2>
+                    <form method="POST" action="/register" onsubmit="return validatePassword()" autocomplete="on">
+                        <div class="input-field">
+                          <input type="text" id="first_name" name="first_name" placeholder="Nombres" required>
+                        </div>
+                        <div class="input-field">
+                          <input type="text" id="last_name" name="last_name" placeholder="Apellidos" required>
+                        </div>
+                        <div class="input-field">
+                          <input type="email" id="register_email" name="email" placeholder="Correo electrónico" required>
+                          <div id="emailError" style="color:red; font-size:10px; display:none;"></div>
+                        </div>
+
+                        <!-- Teléfono con prefijo +57 -->
+                        <div class="phone-input">
+                          <span class="country-code">+57</span>
+                          <input type="tel" id="phone_local" placeholder="" inputmode="tel" pattern="[0-9]{7,10}" aria-label="Número celular sin código" required>
+                          <input type="hidden" name="phone" id="phone_full">
+                        </div>
+
+                        <!-- Usuario sugerido -->
+                        <div class="input-field">
+                          <input type="text" id="register_username" name="username" placeholder="Usuario" required>
+                          <div id="usernameError" style="color:red; font-size:10px; display:none;"></div>
+                          <div id="usernameSuggestions" style="color:#888; font-size:10px; display:none;"></div>
+                        </div>
+
+                        <!-- Contraseña con validación -->
+                       <div class="password-field">
+                         <input type="password" id="register_password" name="password" placeholder="Contraseña" required>
+                         <span class="toggle-password" onclick="togglePassword('register_password', this)" aria-label="Mostrar/Ocultar contraseña">
+                          <!-- Ojo abierto SVG -->
+                          <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+                            <path stroke="#888" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                            <circle cx="12" cy="12" r="3" stroke="#888" stroke-width="2"/>
+                          </svg>
+                          <!-- Ojo cerrado SVG (tachado), oculto por defecto -->
+                          <svg class="eye-icon eye-off" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" style="display:none;">
+                            <path stroke="#888" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                            <circle cx="12" cy="12" r="3" stroke="#888" stroke-width="2"/>
+                            <line x1="4" y1="20" x2="20" y2="4" stroke="#888" stroke-width="2"/>
+                          </svg>
+                        </span>
+                        <div id="passwordHelp" style="color:red; display:none;">
+                          La contraseña debe tener al menos 8 caracteres, una letra mayúscula, un número y un símbolo.
+                        </div>
+                       </div>
+
+                        <!-- NUEVO: Repetir contraseña -->
+                        <div class="password-field">
+                          <input type="password" id="register_password_repeat" name="password_repeat" placeholder="Repetir contraseña" required>
+                          <span class="toggle-password" onclick="togglePassword('register_password_repeat', this)" aria-label="Mostrar/Ocultar contraseña">
+                            <!-- Ojo abierto SVG -->
+                            <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+                              <path stroke="#888" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                              <circle cx="12" cy="12" r="3" stroke="#888" stroke-width="2"/>
+                            </svg>
+                            <!-- Ojo cerrado SVG (tachado), oculto por defecto -->
+                            <svg class="eye-icon eye-off" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" style="display:none;">
+                              <path stroke="#888" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                              <circle cx="12" cy="12" r="3" stroke="#888" stroke-width="2"/>
+                              <line x1="4" y1="20" x2="20" y2="4" stroke="#888" stroke-width="2"/>
+                            </svg>
+                          </span>
+                          <div id="repeatPasswordError" style="color:red; font-size:10px; display:none;">
+                            Las contraseñas no coinciden.
+                          </div>
+                        </div>
+
+                        <button type="submit">Registrar</button>
+                    </form>
+                    <div class="switch-link" onclick="showLogin()">¿Ya tienes cuenta? Iniciar sesión</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-left">
+            <h1>LF-01</h1>
+            <span class="divider"></span>
+            <img src="/static/circulo.png" alt="Logo">
+            <h3>IRIS</h3>
+        </div>
+        <div class="footer-right">
+            <span>Colombia</span>
+        </div>
+    </footer>
+
+    <!-- NUEVO: Modal para restablecer contraseña -->
+<div id="forgotModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeForgotModal()">&times;</span>
+    <h3 style="margin-bottom: 10px; color: #b41616; font-size: 18px; text-align: center;">Restablecer contraseña</h3>
+    <!-- Mensaje de éxito oculto por defecto -->
+    <div id="forgotSuccess" style="display:none; color:#cccccc; font-size:15px; text-align:center; min-height:120px; display:flex; align-items:center; justify-content:center;">
+      <!-- Aquí se mostrará el mensaje de éxito -->
+    </div>
+    <form id="forgotForm" onsubmit="submitForgot(event)">
+      <div style="font-size: 12px; color: #cccccc; text-align: center; margin-bottom: 12px;">
+        Ingresa el correo con el que te registraste y te enviaremos un enlace para crear una nueva contraseña.
+      </div>
+      <div class="input-field" style="margin-bottom: 16px;">
+        <input type="email" id="forgot_email" name="forgot_email" placeholder="Correo electrónico" required>
+      </div>
+      <button type="submit" style="width:100%;">Restablecer contraseña</button>
+      <div id="forgotMessage" style="font-size:12px; color:rgb(238, 209, 209); margin-top:8px; text-align:center;"></div>
+    </form>
+  </div>
+</div>
+
+    <script src="/static/js/login.js"></script>
+</body>
+</html>
+
+

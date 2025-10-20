@@ -1,195 +1,170 @@
-import * as THREE from 'https://cdn.skypack.dev/three@0.129.0/build/three.module.js';
-import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js';
-import { gsap } from 'https://cdn.skypack.dev/gsap';
+const hero = document.getElementById('hero');
+const video = hero.querySelector('video');
+const text = document.getElementById('heroText');
+const emergingBox = document.getElementById('emergingBox');
+const bottomBar = document.querySelector('.bottom-bar');
 
-let leaf; 
-
-const leafLoader = new GLTFLoader();
-leafLoader.load('/static/neuron.glb', function (gltf) {
-    leaf = gltf.scene;
-
-    // Escala y posición de fondo
-    leaf.scale.set(5, 5, 5);
-    leaf.position.set(0, -2, -20);
-    leaf.rotation.set(0.2, 0.5, 0);
-
-    // Transparencia + tono claro
-    leaf.traverse((child) => {
-        if (child.isMesh) {
-            child.material.transparent = true; 
-            child.material.opacity = 0.4;
-            child.material.color.set('#aaffcc');
-        }
-    });
-
-    scene.add(leaf);
-});
-
-let isLeafVisible = false; 
-
-window.addEventListener("scroll", () => {
-    if (!leaf) return;
-
-    const banner = document.getElementById("banner");
-    const rect = banner.getBoundingClientRect();
-
-    if (rect.bottom > 0 && rect.top < window.innerHeight) {
-        if (!isLeafVisible) {
-            isLeafVisible = true;
-            gsap.to(leaf.scale, { x: 5, y: 5, z: 5, duration: 1, ease: "elastic.out(1, 0.5)" });
-            gsap.to(leaf.rotation, { y: 0.5, duration: 1.2, ease: "power2.out" });
-            gsap.to(leaf.position, { z: -20, opacity: 1, duration: 1 });
-            gsap.to(leaf.traverse((child)=>{if(child.isMesh) child.material;}), {opacity: 0.4});
-            leaf.visible = true;
-        }
-    } else {
-        if (isLeafVisible) {
-            isLeafVisible = false;
-            // Animación de desaparición
-            gsap.to(leaf.scale, { x: 0, y: 0, z: 0, duration: 1, ease: "back.in(1.5)" });
-            gsap.to(leaf.rotation, { y: leaf.rotation.y + 1, duration: 1, ease: "power2.in" });
-            gsap.to(leaf.position, { z: -30, duration: 1 });
-            gsap.to(leaf.traverse((child)=>{if(child.isMesh) child.material;}), {opacity: 0});
-            // Lo ocultamos tras animación
-            setTimeout(() => { leaf.visible = false; }, 1000);
-        }
-    }
-});
-
-
-
-// TYPING EFFECT
-const typingElement = document.getElementById("typing-text");
-
-const phrases = [
-  "Haz tus tareas del día a día en tu PC usando solo tu voz.",
-  "Ordénale y pregúntale lo que quieras.",
-  "Solo di «Iris» para pedir lo que necesites.",
-  "Disfruta de su compañía y apariencia."
-];
-
-let phraseIndex = 0;
-let charIndex = 0;
-let isDeleting = false;
-
-function typeEffect() {
-  const currentPhrase = phrases[phraseIndex];
-  
-  if (!isDeleting) {
-    // Escribiendo
-    typingElement.textContent = currentPhrase.substring(0, charIndex + 1);
-    charIndex++;
-    if (charIndex === currentPhrase.length) {
-      isDeleting = true;
-      setTimeout(typeEffect, 2000); // pausa antes de borrar
-      return;
-    }
-  } else {
-    // Borrando
-    typingElement.textContent = currentPhrase.substring(0, charIndex - 1);
-    charIndex--;
-    if (charIndex === 0) {
-      isDeleting = false;
-      phraseIndex = (phraseIndex + 1) % phrases.length;
-    }
-  }
-  
-  setTimeout(typeEffect, isDeleting ? 50 : 100);
+function clamp(v, a = 0, b = 1) {
+  return Math.max(a, Math.min(b, v));
 }
 
-// Iniciar efecto typing
-typeEffect();
+let lastExtendedProgress = 0;
 
-
-
-
-// CÁMARA
-const camera = new THREE.PerspectiveCamera(
-    10,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-);
-camera.position.z = 10;
-
-// ESCENA
-const scene = new THREE.Scene();
-let bee;
-let mixer;
-const loader = new GLTFLoader();
-loader.load('/static/logo.glb',
-    function (gltf) {
-        bee = gltf.scene;
-
-        // 🔹 Estado inicial de frente
-        bee.rotation.y = 4.3;
-        bee.position.y = 1;
-
-        scene.add(bee);
-
-        mixer = new THREE.AnimationMixer(bee);
-        if (gltf.animations.length > 0) {
-            mixer.clipAction(gltf.animations[0]).play();
-        }
-
-        modelMove();
-    }
-);
-
-// RENDER
-const renderer = new THREE.WebGLRenderer({ alpha: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.getElementById('container3D').appendChild(renderer.domElement);
-
-// LUCES
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.3);
-scene.add(ambientLight);
-const topLight = new THREE.DirectionalLight(0xffffff, 1);
-topLight.position.set(500, 500, 500);
-scene.add(topLight);
-
-// BUCLE RENDER
-const reRender3D = () => {
-    requestAnimationFrame(reRender3D);
-    renderer.render(scene, camera);
-    if (mixer) mixer.update(0.02);
-};
-reRender3D();
-
-// ANIMACIÓN DEPENDIENDO DEL SCROLL
-const modelMove = () => {
-    if (!bee) return;
-
-    let scrollTop = window.scrollY;
-    let maxScroll = document.body.scrollHeight - window.innerHeight;
-    let progress = scrollTop / maxScroll; // entre 0 y 1
-
-    // ROTACIÓN limitada: desde 4.3 (frente) hasta 4.3 + 1.5 rad (~85°)
-    let targetRotationY = 4.3 + progress * 1.5;
-
-    // Rebote suave: sube y baja un poquito
-    let targetY = -0.6 + Math.sin(progress * Math.PI) * 0.3;
-
-    gsap.to(bee.rotation, {
-        y: targetRotationY,
-        duration: 1,
-        ease: "power2.out"
-    });
-
-    gsap.to(bee.position, {
-        y: targetY,
-        duration: 0.8,
-        ease: "bounce.out"
-    });
-};
-
-// EVENTOS
 window.addEventListener('scroll', () => {
-    modelMove();
+  const scrollY = window.scrollY;
+
+  // ---- PRIMERA FASE ----
+  const maxScroll = window.innerHeight / 5;
+  const progress = clamp(scrollY / maxScroll, 0, 1);
+
+  const width = 85 - progress * 70; // 85 → 15vw
+  const height = 80 - progress * 65; // 80 → 15vh
+  const borderRadius = 4 + progress * 20;
+  const r = Math.floor(progress * 255);
+  const g = Math.floor((1 - progress) * 30);
+  const b = Math.floor((1 - progress) * 40);
+  const heroColor = `rgb(${r}, ${g}, ${b})`;
+
+  const gray = Math.floor(progress * 180);
+  const bodyColor = `rgb(${gray}, ${gray}, ${gray})`;
+  const fontSize = 7 - progress * 4;
+
+  hero.style.width = `${width}vw`;
+  hero.style.height = `${height}vh`;
+  hero.style.borderRadius = `${borderRadius}vh`;
+  hero.style.background = heroColor;
+  document.body.style.backgroundColor = bodyColor;
+  video.style.opacity = `${1 - progress}`;
+  text.style.color = progress < 0.8 ? '#ff2a2a' : '#ffffff';
+  text.style.fontSize = `${fontSize}rem`;
+  text.style.transform = `translate(-50%, -50%)`; // centrado perfecto
+
+  // ---- SEGUNDA FASE ----
+  const extendedStart = maxScroll;
+  const extendedRange = window.innerHeight * 0.7;
+  const extendedProgress = clamp((scrollY - extendedStart) / extendedRange, 0, 1);
+  const smoothProgress = lastExtendedProgress + (extendedProgress - lastExtendedProgress) * 0.2;
+  lastExtendedProgress = smoothProgress;
+
+  // IRIS permanece centrado todo el tiempo (sin moverse hacia arriba)
+  text.style.transform = 'translate(-50%, -50%)';
+
+  // Solo se desvanece sin movimiento
+  const irisOpacity = 1 - smoothProgress * 1.5;
+  text.style.opacity = `${clamp(irisOpacity)}`;
+
+  // ---- TERCERA FASE ----
+  if (smoothProgress > 0.7) {
+    const growProgress = (smoothProgress - 0.7) / 0.1;
+    const grow = clamp(growProgress, 0, 1);
+
+    // Más corto de ancho y un poco más alto
+    hero.style.width = `${15 + grow * 15}vw`;  // 15vw → 30vw (más corto)
+    hero.style.height = `${10}vh`;             // un poco más alto
+    hero.style.borderRadius = "9999px";        // forma ovalada suave
+  } else {
+    hero.style.width = `${15}vw`;
+    hero.style.height = `${10}vh`;
+    hero.style.borderRadius = "9999px";
+  }
+
+  // ---- CUARTA FASE ----
+  if (smoothProgress > 0.8) {
+    emergingBox.classList.add('visible');
+  } else {
+    emergingBox.classList.remove('visible');
+  }
+
+  // ---- RESTAURAR AL SUBIR ----
+  if (scrollY < extendedStart) {
+    hero.style.width = `90vw`;
+    hero.style.height = `85vh`;
+    hero.style.borderRadius = `4vh`;
+    text.style.opacity = `1`;
+    text.style.transform = `translate(-50%, -50%)`;
+    emergingBox.classList.remove('visible');
+  }
+
+  // ---- OCULTAR BARRA INFERIOR ----
+  const maxScrollBar = window.innerHeight * 0.6;
+  bottomBar.classList.toggle('hidden', scrollY > maxScrollBar);
 });
 
-window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+// ---- ANIMACIÓN INICIAL ----
+window.addEventListener('load', () => {
+  hero.style.width = "15vw";
+  hero.style.height = "15vh";
+  hero.style.borderRadius = "24vh";
+  hero.style.background = "rgba(73, 10, 10, 1)";
+  hero.style.transition = "all 3s cubic-bezier(0.25, 1, 0.3, 1)";
+  hero.style.transform = "translate(-50%, -50%)";
+
+  text.style.color = "#ffffff";
+  text.style.fontSize = "4rem";
+  text.style.opacity = "0";
+  text.style.transform = "translate(-50%, -50%)";
+  text.style.transition = "opacity 1.2s ease, color 2s ease, font-size 2s ease";
+
+  video.style.opacity = "0";
+  video.style.transition = "opacity 2s ease 1.8s";
+
+  document.body.style.backgroundColor = "rgb(180,180,180)";
+  document.body.style.transition = "background-color 2s ease";
+
+  setTimeout(() => text.style.opacity = "1", 400);
+
+  setTimeout(() => {
+    hero.style.transition = "all 3s cubic-bezier(0.4, 0, 0.2, 1)";
+    text.style.transition = "color 2s ease, font-size 2s ease";
+    hero.style.width = "90vw";
+    hero.style.height = "85vh";
+    hero.style.borderRadius = "4vh";
+    hero.style.background = "linear-gradient(180deg, #2a0205ff, #111)";
+    document.body.style.backgroundColor = "#0f0a0aff";
+    video.style.opacity = "1";
+    text.style.color = "#5f0303ff";
+    text.style.fontSize = "7rem";
+  }, 2000);
 });
+
+
+// ---- EFECTO DE MÁQUINA DE ESCRIBIR CONTROLADO POR SCROLL ----
+const prepText = document.getElementById("prepText");
+let typingStarted = false;
+
+const message = "¿Preparado para usar a IRIS?";
+let charIndex = 0;
+let deleting = false;
+
+function typeEffect() {
+  const visibleText = message.substring(0, charIndex);
+  prepText.textContent = visibleText;
+
+  if (!deleting && charIndex < message.length) {
+    charIndex++;
+    setTimeout(typeEffect, 100);
+  } else if (deleting && charIndex > 0) {
+    charIndex--;
+    setTimeout(typeEffect, 60);
+  } else {
+    deleting = !deleting;
+    setTimeout(typeEffect, deleting ? 1500 : 500);
+  }
+}
+
+// Activar animación cuando el texto aparezca en pantalla
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting && !typingStarted) {
+      typingStarted = true;
+      typeEffect();
+    }
+  });
+}, { threshold: 0.5 });
+
+observer.observe(prepText);
+
+
+window.addEventListener('beforeunload', () => window.scrollTo(0, 0));
+
+

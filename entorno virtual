@@ -1,0 +1,33 @@
+Ver qué comando apunta a Python 3.12
+
+
+py --version
+
+py -3.12 --version
+
+python --version
+
+
+
+Eliminar el entorno virtual que existe: 
+
+Remove-Item -Recurse -Force .\iris2
+
+Remove-Item -Recurse -Force .venv
+
+
+Crear otro: 
+
+py -3.12 -m venv iris2
+
+
+Activar: 
+
+.\iris2\Scripts\activate
+
+Instalar dependencias: 
+
+pip install -r requirements.txt
+
+
+.\apichat\Scripts\activate

@@ -2,14 +2,23 @@ const loginPanel = document.getElementById('loginPanel');
         const registerPanel = document.getElementById('registerPanel');
 
         function showRegister() {
-            loginPanel.classList.remove('active');
-            registerPanel.classList.add('active');
-        }
+    loginPanel.classList.remove('active');
+    registerPanel.classList.add('active');
 
-        function showLogin() {
-            registerPanel.classList.remove('active');
-            loginPanel.classList.add('active');
-        }
+    // Ocultar mazo de cartas
+    const cardContainer = document.querySelector('.card-container');
+    if (cardContainer) cardContainer.style.display = 'none';
+}
+
+function showLogin() {
+    registerPanel.classList.remove('active');
+    loginPanel.classList.add('active');
+
+    // Mostrar mazo de cartas
+    const cardContainer = document.querySelector('.card-container');
+    if (cardContainer) cardContainer.style.display = 'flex';
+}
+
 
         // Construir phone completo con +57 antes de enviar
         document.addEventListener('DOMContentLoaded', function () {
@@ -160,7 +169,7 @@ const loginPanel = document.getElementById('loginPanel');
           .then(res => res.json())
           .then(data => {
             if (data.exists) {
-              errorDiv.textContent = "Este usuario ya está registrado.";
+              errorDiv.textContent = "Este usuario ya existe";
               errorDiv.style.display = "block";
               if (data.suggestions && data.suggestions.length > 0) {
                 suggestionsDiv.textContent = "Sugerencias: " + data.suggestions.join(", ");
@@ -208,3 +217,37 @@ const loginPanel = document.getElementById('loginPanel');
             }
           });
         }
+
+// ======== RECORDAR CREDENCIALES ========
+document.addEventListener("DOMContentLoaded", () => {
+  const usernameInput = document.getElementById("login_username");
+  const passwordInput = document.getElementById("login_password");
+  const rememberCheckbox = document.getElementById("rememberMe");
+
+  // Evitar error si no existe (por seguridad)
+  if (!usernameInput || !passwordInput || !rememberCheckbox) return;
+
+  // Cargar datos guardados (si existen)
+  const savedUsername = localStorage.getItem("savedUsername");
+  const savedPassword = localStorage.getItem("savedPassword");
+
+  if (savedUsername && savedPassword) {
+    usernameInput.value = savedUsername;
+    passwordInput.value = savedPassword;
+    rememberCheckbox.checked = true;
+  }
+
+  // Guardar o eliminar credenciales al enviar el formulario
+  const loginForm = document.querySelector('form[action="/login"]');
+  if (loginForm) {
+    loginForm.addEventListener("submit", () => {
+      if (rememberCheckbox.checked) {
+        localStorage.setItem("savedUsername", usernameInput.value);
+        localStorage.setItem("savedPassword", passwordInput.value);
+      } else {
+        localStorage.removeItem("savedUsername");
+        localStorage.removeItem("savedPassword");
+      }
+    });
+  }
+});
