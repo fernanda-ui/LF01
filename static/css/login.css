@@ -310,6 +310,24 @@ button:hover, .btn-submit:hover {
   border-bottom: 2px solid #fff;
 }
 
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3); /* borde suave */
+  border-top: 3px solid #ffffff; /* color del borde superior */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
+  margin-left: 8px; /* separa del texto del botón */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===== MODELO 3D ===== */
 
 .card-container {
   position: fixed;

@@ -72,18 +72,23 @@
       <header class="chat-header">
         <div>
           <div class="title" id="chatTitle">Chat de hoy</div>
-          <div class="sub">Lo que hablas con Alira y lo que ella responde por voz</div>
+          <div class="sub">Lo que hablas con Iris y lo que ella responde por voz</div>
         </div>
         <span class="pill" id="statusPill">En vivo</span>
       </header>
 
       <section id="chatArea" class="chat-area" aria-live="polite">
-        <!-- Mensajes generados por JS -->
-      </section>
+    <!-- Mensajes generados por JS -->
+    <div id="chatOutputWeb" class="chat-output-web"></div>
+     </section>
 
-      <footer class="chat-footer">
-        <div class="hint">Consejo: haz clic en el botón flotante para activar a Alira. Este chat se actualiza automáticamente.</div>
-      </footer>
+
+<!-- Barra flotante estilo moderno -->
+<div class="chat-input-modern">
+  <button id="attachBtnWeb" class="attach-btn" title="Adjuntar archivo">+</button>
+  <input type="text" id="chatInputWeb" placeholder="Escribe un mensaje..." />
+  <button id="sendBtnWeb" class="send-btn" title="Enviar">→</button>
+</div>
     </main>
   </div>
 

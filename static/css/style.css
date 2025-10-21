@@ -289,4 +289,75 @@ html, body {
   font-size:11px; 
   font-weight:700; }
 
+/* Chat Flotante para escribir */
+.chat-input-modern {
+  position: fixed;
+  bottom: 24px; /* casi pegada al bottom */
+  left: 60%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2); /* acorde al tema */
+  padding: 8px 12px;
+  border-radius: 32px; /* muy redondeado */
+  box-shadow: 0 4px 15px rgba(53, 52, 52, 0.2);
+  max-width: 900px;
+  width: 100%;
+  z-index: 1000;
+  border: 1px solid rgba(166, 157, 157, 0.334);
+}
+
+.chat-input-modern input {
+  flex: 1;
+  border: none;
+  outline: none;
+  border-radius: 24px;
+  padding: 20px 12px;
+  font-size: 14px;
+  background: var(--panel); 
+  color: var(--text);
+}
+
+.chat-input-modern .attach-btn,
+.chat-input-modern .send-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-500);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease;
+}
+
+.chat-input-modern .attach-btn:hover,
+.chat-input-modern .send-btn:hover {
+  background: var(--accent-700);
+}
+
+
+.chat-output-web {
+  max-height: calc(100vh - 180px); /* ajustar según header y input */
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+.mensaje-usuario {
+  text-align: right;
+  margin: 6px;
+  padding: 8px 12px;
+  background-color: var(--accent-400);
+  border-radius: 12px;
+  color: #fff;
+}
+.mensaje-ia {
+  text-align: left;
+  margin: 6px;
+  padding: 8px 12px;
+  background-color: var(--panel);
+  border-radius: 12px;
+}
 

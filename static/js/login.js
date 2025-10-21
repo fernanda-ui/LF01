@@ -194,29 +194,53 @@ function showLogin() {
         function closeForgotModal() {
           document.getElementById('forgotModal').style.display = 'none';
         }
-        function submitForgot(event) {
-          event.preventDefault();
-          const email = document.getElementById('forgot_email').value;
-          fetch('/forgot_password', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email})
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              // Oculta el formulario y muestra el mensaje de éxito
-              document.getElementById('forgotForm').style.display = 'none';
-              const successDiv = document.getElementById('forgotSuccess');
-              successDiv.textContent = "¡Listo! Se ha enviado un correo para restablecer tu contraseña. Por favor revisa tu bandeja de entrada.";
-              successDiv.style.display = 'flex';
-            } else {
-              // Muestra el mensaje de error debajo del input
-              document.getElementById('forgotMessage').style.color = 'red';
-              document.getElementById('forgotMessage').textContent = data.message;
-            }
-          });
-        }
+        
+  function submitForgot(event) {
+  event.preventDefault();
+
+  const email = document.getElementById('forgot_email').value;
+  const submitButton = document.getElementById('forgotSubmit');
+  const btnText = submitButton.querySelector('.btn-text');
+  const spinner = submitButton.querySelector('.spinner');
+
+  // Mostrar spinner y ocultar texto del botón
+  btnText.style.display = 'none';
+  spinner.style.display = 'inline-block';
+
+  fetch('/forgot_password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email})
+  })
+  .then(res => res.json())
+  .then(data => {
+    // Ocultar spinner y mostrar texto del botón de nuevo
+    spinner.style.display = 'none';
+    btnText.style.display = 'inline';
+
+    if (data.success) {
+      // Oculta el formulario y muestra el mensaje de éxito
+      document.getElementById('forgotForm').style.display = 'none';
+      const successDiv = document.getElementById('forgotSuccess');
+      successDiv.textContent = "¡Listo! Se ha enviado un correo para restablecer tu contraseña. Por favor revisa tu bandeja de entrada.";
+      successDiv.style.display = 'flex';
+    } else {
+      // Muestra el mensaje de error debajo del input
+      const messageDiv = document.getElementById('forgotMessage');
+      messageDiv.style.color = 'red';
+      messageDiv.textContent = data.message;
+    }
+  })
+  .catch(() => {
+    // En caso de error de red
+    spinner.style.display = 'none';
+    btnText.style.display = 'inline';
+    const messageDiv = document.getElementById('forgotMessage');
+    messageDiv.style.color = 'red';
+    messageDiv.textContent = "Ocurrió un error. Intenta de nuevo más tarde.";
+  });
+}
+
 
 // ======== RECORDAR CREDENCIALES ========
 document.addEventListener("DOMContentLoaded", () => {
@@ -250,4 +274,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
 });
+
+

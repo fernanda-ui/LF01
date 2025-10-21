@@ -189,3 +189,55 @@ document.addEventListener("click", (e) => {
 // ========================
 loadHistory();
 startPolling();
+
+
+const chatInputWeb = document.getElementById('chatInputWeb'); // tu input
+const sendBtnWeb = document.getElementById('sendBtnWeb');     // botón +
+const chatOutputWeb = document.getElementById('chatOutputWeb'); // contenedor de mensajes
+
+function agregarMensajeWeb(user, texto) {
+    const div = document.createElement('div');
+    div.className = user === 'user' ? 'mensaje-usuario' : 'mensaje-ia';
+    div.textContent = texto;
+    chatOutputWeb.appendChild(div);
+    chatOutputWeb.scrollTop = chatOutputWeb.scrollHeight;
+}
+
+async function enviarMensajeWeb() {
+    const mensaje = chatInputWeb.value.trim();
+    if (!mensaje) return;
+
+    agregarMensajeWeb('user', mensaje); // muestra el mensaje del usuario
+    chatInputWeb.value = '';
+    chatInputWeb.disabled = true;
+    sendBtnWeb.disabled = true;
+
+    try {
+        // Llamada a tu backend de IA
+        const res = await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: mensaje })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            agregarMensajeWeb('ia', data.ia_message); // muestra la respuesta de IA
+        } else {
+            agregarMensajeWeb('ia', "Error: " + (data.error || "No se pudo obtener respuesta"));
+        }
+    } catch (err) {
+        agregarMensajeWeb('ia', "Error de conexión");
+    } finally {
+        chatInputWeb.disabled = false;
+        sendBtnWeb.disabled = false;
+        chatInputWeb.focus();
+    }
+}
+
+sendBtnWeb.addEventListener('click', enviarMensajeWeb);
+chatInputWeb.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') enviarMensajeWeb();
+});
+
+
+

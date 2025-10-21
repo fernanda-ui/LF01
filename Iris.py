@@ -378,7 +378,8 @@ def escuchar_loop():
 
                 # Preguntar a la IA
                 respuesta = obtener_respuesta_ia(comando)
-                hablar_y_guardar_con_bubble(respuesta)
+                hablar_y_guardar_con_bubble_threadsafe(respuesta)
+
 
 
         except Exception as e:
@@ -663,19 +664,20 @@ def bubble_send():
     def responder(prompt):
         show_bubble_with_text("Escribiendo...", animate=False)
         respuesta = obtener_respuesta_ia(prompt)
-        hablar_y_guardar_con_bubble(respuesta)
+        hablar_y_guardar_con_bubble_threadsafe(respuesta)
+        
 
     threading.Thread(target=responder, args=(texto,), daemon=True).start()
 
-def hablar_y_guardar_con_bubble(texto):
-    try:
+def hablar_y_guardar_con_bubble_threadsafe(texto):
+    """Actualiza burbuja y habla, de forma segura para hilos."""
+    def actualizar_burbuja():
         show_bubble_with_text(texto, animate=True)
-    except Exception as e:
-        print("Error mostrando burbuja:", e)
-    try:
-        hablar_y_guardar(texto)
-    except Exception as e:
-        print("Error al hablar o guardar:", e)
+    if ventana:
+        ventana.after(0, actualizar_burbuja)  # Se ejecuta en el hilo principal de Tk
+    # Luego la voz sigue en hilo separado
+    threading.Thread(target=hablar_y_guardar, args=(texto,), daemon=True).start()
+
 
 def limpiar_texto(widget):
     try:
@@ -705,7 +707,7 @@ def agregar_mensaje(texto):
 
 
 
-# ===================== FLASK WEB APP =====================
+# ===================== FLASK WEB APP ===================== #
 app = Flask(__name__)
 app.secret_key = "clave_secreta_segura"
 
@@ -718,7 +720,7 @@ def login():
 
         # ===  VALIDAR reCAPTCHA ===
         recaptcha_response = request.form.get('g-recaptcha-response')
-        secret_key = "6LcWmeorAAAAANAU3YgXlw8X_9fveTarCRZIzoEv"  # 🔑 Reemplázala con tu clave secreta (de Google)
+        secret_key = "6LcWmeorAAAAANAU3YgXlw8X_9fveTarCRZIzoEv" 
         verify_url = "https://www.google.com/recaptcha/api/siteverify"
         data = {"secret": secret_key, "response": recaptcha_response}
 
