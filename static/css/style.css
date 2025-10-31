@@ -53,11 +53,14 @@ html, body {
 
 /* Sidebar */
 .sidebar {
-  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
   background: var(--panel-2);
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  border-right: 1px solid var(--border);
+  height: 100vh;
 }
+
+
 
 /* Brand */
 .brand {
@@ -84,17 +87,25 @@ html, body {
   display: block;
 }
 
+.logo-img { 
+  height: 40px; 
+  object-fit: contain; 
+  display: block;
+}
 
-.logo-img { height: 40px; object-fit: contain; }
-.hidden { display: none !important; }
+.hidden { 
+  display: none !important; 
+}
 
 .section-title {
-  margin: 14px 16px 8px;
-  font-size: 12px;
+  margin: 6px 14px 4px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .12em;
   color: var(--muted);
+  flex-shrink: 0;
 }
+
 
 /* Profile Sidebar */
 .profile {
@@ -106,7 +117,16 @@ html, body {
   justify-content: space-between;
   gap: 10px;
 }
-.profile-left { display: flex; align-items: center; gap: 10px; cursor:pointer; }
+
+.profile-left { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  cursor:pointer; 
+  width: 100%;
+  padding: 6px;
+}
+
 .avatar {
   width: 36px; height: 36px;
   border-radius: 50%;
@@ -121,53 +141,175 @@ html, body {
 .user-meta { line-height: 1.1; }
 .user-name { font-weight: 700; font-size: 13px; }
 .user-role { font-size: 11px; color: var(--muted); }
-.profile-left:hover { background-color: #c91b1b; border-radius: 8px; }
+.profile-left:hover { background-color: #8f8c8c34; border-radius: 8px; }
 
+/* === MENÚ DE PERFIL (estilo ChatGPT) === */
 .profile-menu {
   position: absolute;
   bottom: 60px;
   left: 10px;
-  background: #a30e0e;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  padding: 10px;
-  min-width: 200px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  z-index: 100;
+  width: 230px;
+  background: #181b21;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  font-size: 14px;
+  z-index: 200;
+  overflow: hidden;
+  animation: fadeIn .15s ease;
 }
 
-.profile-menu-item {
-  padding: 8px 12px;
-  border-radius: 6px;
+.profile-header {
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb,  #181b21 90%, 10%);
+  word-break: break-word;
+}
+
+.profile-options {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+
+.profile-options li {
+  display: flex;
+  align-items: center;
+}
+
+.profile-options li a {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 14px;
+  text-decoration: none;
+  color: var(--text);
+  transition: background .15s ease, color .15s ease;
+}
+
+.profile-options li a:hover {
+  background: #8f8c8c34; 
+  border-radius: 8px;
+  color: var(--accent-200);
+}
+
+.profile-options hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 6px 0;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+
+
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* 🔹 Contenedor superior del historial */
+.sidebar-top {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background-color: var(--panel);
+  flex-shrink: 0; 
+}
+
+
+
+/* 🔹 Botones */
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e0e0e091;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  text-align: left;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-btn i {
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+/* Hover effect similar al estilo ChatGPT */
+.sidebar-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
-.profile-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* Estado activo opcional */
+.sidebar-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
 }
 
+
 /* Chat List Sidebar */
-.chat-list { padding: 0 8px 8px; overflow: auto; }
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* 👈 menos separación entre items */
+}
+
 .chat-item {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px;
-  margin: 6px 8px;
+  gap: 8px;          /* 👈 más cerrado */
+  padding: 6px 8px;  /* 👈 más compacto */
+  margin: 0;         /* 👈 sin margen extra */
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--panel);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,.03);
-  transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,.02);
+  transition: transform .06s ease, box-shadow .15s ease, border-color .2s ease;
 }
-.chat-item:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
-.chat-item.active { border-color: var(--accent-600); box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent-600) 25%, transparent); }
+.chat-item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.chat-item.active {
+  border-color: var(--accent-600);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent-600) 25%, transparent);
+}
+
 .chat-date { font-size: 12px; color: var(--muted); }
 .chat-title { font-weight: 600; }
+
+.chat-messages {
+  padding-bottom: 100px; /* espacio para el input */
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
 
 /* Botones generales */
 .btn, .icon-btn {
@@ -195,7 +337,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
+  padding: 19px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -209,25 +351,32 @@ html, body {
 }
 
 .msg {
-  max-width: min(70%,720px);
-  margin: 10px 0;
+  max-width: min(70%,620px);
+  margin: 25px 140px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--panel);
   box-shadow: 0 2px 6px rgba(0,0,0,.04);
   position: relative;
+  bottom: 100px;
 }
 .msg.user {
   margin-left: auto;
-  border-top-right-radius: 6px;
-  background: color-mix(in oklab, var(--panel) 70%, var(--accent-400) 30%);
-  border-color: color-mix(in oklab, var(--border) 60%, var(--accent-500) 40%);
+  border-radius: 10px;
+  background: linear-gradient(160deg, var(--white-metal-top), var(--white-metal-bottom));
+  width: fit-content;
+  max-width: 500px;
+  min-width: 60px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  text-align: right;
 }
 .msg.alira {
   margin-right: auto;
-  border-top-left-radius: 6px;
-  background: linear-gradient(160deg, var(--white-metal-top), var(--white-metal-bottom));
+  border: none;
+  background: transparent;
+  max-width: 900px; 
 }
 
 .chat-footer {
@@ -280,34 +429,131 @@ html, body {
 }
 .toast.show { opacity:1; transform: translateY(0); }
 
-/* Utilidades */
 .spacer { flex:1; }
-.pill { padding:4px 8px; 
-  border-radius:999px; 
-  background: color-mix(in oklab,var(--accent-500) 20%,transparent); 
-  border:1px solid var(--accent-500); color: var(--text); 
-  font-size:11px; 
-  font-weight:700; }
+.pill { padding:4px 8px; border-radius:999px; background: color-mix(in oklab,var(--accent-500) 20%,transparent); border:1px solid var(--accent-500); color: var(--text); font-size:11px; font-weight:700; }
 
-/* Chat Flotante para escribir */
+/* ========================
+   🎨 Estilo del scroll
+   ======================== */
+#chatArea, #chatOutputWeb {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(65, 63, 63) transparent;
+}
+#chatArea::-webkit-scrollbar,
+#chatOutputWeb::-webkit-scrollbar {
+  width: 20px;
+}
+#chatArea::-webkit-scrollbar-thumb,
+#chatOutputWeb::-webkit-scrollbar-thumb {
+  background: var(--accent-600);
+  border-radius: 6px;
+}
+#chatArea::-webkit-scrollbar-thumb:hover,
+#chatOutputWeb::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-400);
+}
+
+/* ========================
+   ESTADO BOTÓN IRIS
+   ======================== */
+.fab {
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.fab.off {
+  background: radial-gradient(60% 60% at 40% 40%, #dc2626, #991b1b);
+  box-shadow: 0 14px 35px rgba(220, 38, 38, 0.5);
+}
+.fab.on {
+  background: radial-gradient(60% 60% at 40% 40%, #22c55e, #15803d);
+  box-shadow: 0 14px 35px rgba(34, 197, 94, 0.5);
+}
+
+/* Loader circular */
+.loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Oculto por defecto */
+.hidden { display: none; }
+
+/* ========================
+   💬 ICONOS EN MENSAJES IA (tipo ChatGPT)
+   ======================== */
+/* Solo sobreescribimos lo mínimo para que no rompa el resto de .icon-btn */
+.mensaje-ia .icon-btn {
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.mensaje-ia .icon-btn:hover {
+  opacity: 1;
+  border-color: var(--accent-500);
+  color: var(--accent-500);
+  transform: translateY(-1px);
+}
+
+.mensaje-ia .icon-btn.active {
+  color: var(--accent-500);
+  border-color: var(--accent-500);
+  background: color-mix(in oklab, var(--accent-500) 10%, transparent);
+}
+
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* ========================
+  ESTILOS PARA LA BARRA DE ESCRITURA (NO MODIFICADOS)
+  ======================== */
+/* ========================
+   💬 Chat Input Modern (ajustado según sidebar)
+   ======================== */
 .chat-input-modern {
   position: fixed;
-  bottom: 24px; /* casi pegada al bottom */
-  left: 60%;
+  bottom: 24px;
+  left: calc(320px + 40%); /* 🔹 centrado mejor al mostrar sidebar */
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--panel-2); /* acorde al tema */
+  background: var(--panel-2);
   padding: 8px 12px;
-  border-radius: 32px; /* muy redondeado */
+  border-radius: 32px;
   box-shadow: 0 4px 15px rgba(53, 52, 52, 0.2);
   max-width: 900px;
-  width: 100%;
-  z-index: 1000;
+  width: calc(100% - 420px); /* 🔹 reduce un poco el ancho para no tocar el botón Iris */
+  z-index: 900;
   border: 1px solid rgba(166, 157, 157, 0.334);
+  transition: all 0.3s ease;
 }
 
+/* Input */
 .chat-input-modern input {
   flex: 1;
   border: none;
@@ -315,10 +561,11 @@ html, body {
   border-radius: 24px;
   padding: 20px 12px;
   font-size: 14px;
-  background: var(--panel); 
+  background: var(--panel);
   color: var(--text);
 }
 
+/* Botones del input */
 .chat-input-modern .attach-btn,
 .chat-input-modern .send-btn {
   width: 36px;
@@ -333,31 +580,241 @@ html, body {
   place-items: center;
   transition: background 0.2s ease;
 }
-
 .chat-input-modern .attach-btn:hover,
 .chat-input-modern .send-btn:hover {
   background: var(--accent-700);
 }
 
+/* ✅ Cuando el sidebar está colapsado (oculto) */
+.app.sidebar-collapsed .chat-input-modern {
+  left: calc(72px + 48%); /* 🔹 se centra correctamente cuando el panel se oculta */
+  width: calc(100% - 200px); /* 🔹 más ancho porque hay más espacio libre */
+}
 
-.chat-output-web {
-  max-height: calc(100vh - 180px); /* ajustar según header y input */
-  overflow-y: auto;
-  padding-bottom: 12px;
+
+
+/* ========================
+   💬 ACCIONES EN MENSAJES IA (tipo ChatGPT)
+   ======================== */
+
+.message-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
 }
-.mensaje-usuario {
-  text-align: right;
-  margin: 6px;
-  padding: 8px 12px;
-  background-color: var(--accent-400);
-  border-radius: 12px;
-  color: #fff;
+
+.mensaje-ia:hover .message-actions {
+  opacity: 1;
 }
-.mensaje-ia {
-  text-align: left;
-  margin: 6px;
-  padding: 8px 12px;
-  background-color: var(--panel);
-  border-radius: 12px;
+
+.message-actions .icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
+
+.message-actions .icon-btn:hover {
+  transform: scale(1.2);
+  color: var(--accent-500);
+}
+
+.message-actions .icon-btn.active {
+  color: var(--accent-500);
+}
+
+/* ========================
+   BOTÓN OCULTAR SIDEBAR (pegado a la línea divisoria)
+   ======================== */
+
+.brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 🔘 Botón circular fijo sobre la línea divisoria */
+.toggle-sidebar-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  margin-left: -1px;
+}
+
+/* Hover sutil */
+.toggle-sidebar-btn:hover {
+  background: color-mix(in oklab, var(--accent-500) 12%, var(--panel));
+  color: var(--accent-500);
+  transform: translateY(-50%) scale(1.05);
+}
+
+/* Flecha con giro suave */
+#arrowIcon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+/* Flecha cambia dirección */
+.app.sidebar-collapsed #arrowIcon {
+  transform: rotate(180deg);
+}
+
+/* ========================
+   🧱 Estructura general del layout
+   ======================== */
+.app {
+  position: relative;
+  display: grid;
+  grid-template-columns: 320px 1fr; /* sidebar + chat */
+  transition: grid-template-columns 0.3s ease;
+  height: 100vh;
+}
+
+/* 🔧 Al colapsar, el chat ocupa todo el espacio sobrante */
+.app.sidebar-collapsed {
+  grid-template-columns: 72px 1fr !important; /* sidebar pequeña + chat ancho */
+  border-left: none;
+}
+
+/* ✅ Botón anclado a la frontera del sidebar */
+.app .toggle-sidebar-btn {
+  left: calc(320px - 17px);
+}
+
+/* ✅ Cuando la barra está colapsada, se mueve con la línea */
+.app.sidebar-collapsed .toggle-sidebar-btn {
+  left: calc(72px - 17px);
+}
+
+.app.sidebar-collapsed .sidebar {
+  border-right: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+/* ========================
+   Asegura que el main (chat) se expanda completamente
+   ======================== */
+.main {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  transition: width 0.3s ease;
+}
+
+/* ========================
+   Sidebar colapsable
+   ======================== */
+.sidebar {
+  transition: width 0.25s ease;
+  border-right: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.sidebar.collapsed {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  overflow: visible; /* permite que se vea el botón */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  z-index: 10;
+}
+
+/* ✅ Centra el logo correctamente */
+.sidebar.collapsed .brand {
+  justify-content: center;
+  align-items: center;
+  padding: 14px 0;
+  width: 100%;
+}
+.sidebar.collapsed .brand-logo {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  position: relative;
+  left: 6px;
+}
+.sidebar.collapsed .brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ❌ Oculta el botón de tema */
+.sidebar.collapsed #themeToggle {
+  display: none !important;
+}
+
+/* ✅ Mantiene íconos en posición original */
+.sidebar.collapsed .sidebar-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px;
+  margin-top: 8px;
+  position: relative;
+  bottom: 200px;
+}
+.sidebar.collapsed .sidebar-top button span {
+  display: none;
+}
+.sidebar.collapsed .sidebar-top button i {
+  font-size: 18px;
+  margin: 0 auto;
+}
+
+/* ✅ Perfil siempre abajo */
+.sidebar.collapsed .profile {
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  
+}
+.sidebar.collapsed .profile .avatar {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  left: 6px;
+}
+.sidebar.collapsed .profile .user-meta {
+  display: none;
+}
+
+/* ❌ Oculta texto, títulos y lista */
+.sidebar.collapsed .section-title,
+.sidebar.collapsed #chatList,
+.sidebar.collapsed .chat-item .chat-title,
+.sidebar.collapsed .chat-item .chat-date,
+.sidebar.collapsed .profile-menu,
+.sidebar.collapsed .brand .brand-logo span {
+  display: none !important;
+}
+
 

@@ -197,45 +197,63 @@ def dividir_en_frases(texto: str, max_len: int = 150):
     return frases
 
 def detener_voz():
-    """Marca bandera para detener y para de inmediato si hay reproducción."""
+    """Detiene la voz de Iris inmediatamente."""
     global detener_voz_flag, audio_actual
     detener_voz_flag = True
     try:
-        if audio_actual and pygame.mixer.get_busy():
+        if pygame.mixer.get_init():
             pygame.mixer.stop()
+        if audio_actual:
+            audio_actual.stop()
+            audio_actual = None
     except Exception as e:
-        print("Detener voz error:", e)
+        print("Error al detener voz:", e)
+
 
 def hablar_por_frases(texto: str):
     """Convierte texto a voz por fragmentos y reproduce (gTTS + pygame)."""
     global audio_actual, detener_voz_flag
+
     frases = dividir_en_frases(texto)
+    if not frases:
+        return
+
+    detener_voz_flag = False
+
     for frag in frases:
         if detener_voz_flag:
-            detener_voz_flag = False
             break
         frag = frag.strip()
         if not frag:
             continue
+
         try:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             tts = gTTS(text=frag, lang='es')
             tts.save(tmp.name)
             tmp.close()
+
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+
             audio_actual = pygame.mixer.Sound(tmp.name)
             audio_actual.play()
+
             while pygame.mixer.get_busy():
                 if detener_voz_flag:
                     pygame.mixer.stop()
                     break
                 time.sleep(0.05)
+
         except Exception as e:
             print("Error reproduciendo audio:", e)
+
         finally:
             try:
                 os.remove(tmp.name)
             except Exception:
                 pass
+
 
 # ===================== INTEGRACIÓN CON GEMINI =====================
 def obtener_respuesta_ia(prompt: str) -> str:
@@ -262,6 +280,12 @@ current_user_id_lock = threading.Lock()
 current_user_id = None
 chat_historial = []
 escuchando = True
+# ===================== VARIABLES DE CONTROL DE VOZ =====================
+detener_voz_flag = False   # Bandera para cortar voz al instante
+audio_actual = None        # Último audio en reproducción
+hablando = False           # Indica si Iris está reproduciendo voz
+animando = False         # Indica si la burbuja está animando texto
+
 
 # ===================== FUNCIÓN PARA HABLAR Y GUARDAR HISTORIAL (CENTRAL) =====================
 def hablar_y_guardar(texto: str):
@@ -636,7 +660,6 @@ def bubble_send():
         return
     bubble_entry.delete(0, tk.END)
 
-    # Enviar mensaje al backend para guardar y procesar IA
     def enviar_y_responder(prompt):
         try:
             user_id = None
@@ -645,17 +668,23 @@ def bubble_send():
             if not user_id:
                 return
 
-            # Llamada al endpoint /send_message
+            # Mostrar el mensaje del usuario
+            agregar_mensaje(f"Tú: {prompt}")
+
+            # Enviar mensaje al backend
             import requests
             resp = requests.post("http://127.0.0.1:5000/send_message", json={"message": prompt})
-            if resp.status_code != 200:
-                print("Error enviando mensaje a /send_message:", resp.text)
 
-            # Mostrar el mensaje del usuario en la burbuja
-            agregar_mensaje(f"Tú: {prompt}")
+            if resp.status_code == 200:
+                data = resp.json()
+                respuesta = data.get("bot_response", "Error: sin respuesta")
+                hablar_y_guardar_con_bubble_threadsafe(respuesta)
+            else:
+                agregar_mensaje("⚠️ Error al conectar con el servidor")
 
         except Exception as e:
             print("Error en bubble_send:", e)
+            agregar_mensaje(f"⚠️ Error: {e}")
 
     threading.Thread(target=enviar_y_responder, args=(texto,), daemon=True).start()
 
@@ -829,13 +858,72 @@ def home():
 @app.route("/activar")
 def activar():
     """Activa la ventana de Iris"""
+    global ventana, escuchando, current_user_id, icono
+
     if "user_id" not in session:
         return redirect(url_for("login"))
+
+    # Si había quedado un icono viejo, eliminarlo
+    try:
+        if icono:
+            icono.stop()
+            icono = None
+    except:
+        pass
+
+    # Si ya hay ventana visible, no crear otra
+    if ventana and ventana.winfo_exists():
+        return jsonify({"status": "Iris ya está activa"})
+
+    escuchando = True
+
+    # Asignar usuario actual
     with current_user_id_lock:
-        global current_user_id
         current_user_id = session.get("user_id")
+
     threading.Thread(target=crear_ventana, daemon=True).start()
-    return jsonify({"status": "Iris activada"})
+
+    return jsonify({"status": "Iris activada correctamente"})
+
+
+@app.route("/desactivar")
+def desactivar():
+    """Desactiva Iris sin bloquear la respuesta del servidor"""
+    global ventana, escuchando, icono, detener_voz_flag
+
+    # Detener reconocimiento y voz inmediatamente
+    escuchando = False
+    detener_voz_flag = True
+    try:
+        detener_voz()  # 💥 Corta cualquier reproducción TTS activa
+    except Exception as e:
+        print("Error al detener voz:", e)
+
+    def cerrar_todo():
+        """Cerrar ventana e icono sin bloquear Flask"""
+        global ventana, icono
+        try:
+            if ventana and ventana.winfo_exists():
+                ventana.destroy()
+                ventana = None
+        except Exception as e:
+            print("Error al cerrar ventana:", e)
+            ventana = None
+
+        try:
+            if icono:
+                icono.stop()
+                icono = None
+        except Exception as e:
+            print("Error al detener icono:", e)
+
+    # Cerrar en segundo plano para no bloquear la respuesta al navegador
+    threading.Thread(target=cerrar_todo, daemon=True).start()
+
+    # Responder inmediatamente al frontend
+    return jsonify({"status": "Iris desactivada"})
+
+
 
 @app.route("/get_chat")
 def get_chat():
@@ -955,30 +1043,43 @@ def send_message():
     """
     if "user_id" not in session:
         return jsonify({"error": "No autorizado"}), 401
+
     data = request.get_json() or {}
     mensaje = data.get("message", "").strip()
     if not mensaje:
         return jsonify({"error": "Mensaje vacío"}), 400
 
     user_id = session["user_id"]
+
     try:
         # Guardar mensaje del usuario
         insert_chat(user_id, "usuario", mensaje)
     except Exception as e:
         print("Error guardando mensaje web:", e)
 
-    # Generar respuesta IA (en hilo) para no bloquear al frontend
-    def responder_y_hablar(prompt, uid):
-        try:
-            respuesta = obtener_respuesta_ia(prompt)
-            # Guardar respuesta en BD y hablarla (la función hablar_y_guardar guarda en BD también)
-            hablar_y_guardar_con_bubble(respuesta)
+    # Generar respuesta IA (sin bloquear el frontend)
+    try:
+        respuesta = obtener_respuesta_ia(mensaje)
 
-        except Exception as e:
-            print("Error en responder_y_hablar:", e)
+        # Guardar respuesta y reproducirla (esta función también guarda en BD)
+        hablar_y_guardar_con_bubble_threadsafe(respuesta)
 
-    threading.Thread(target=responder_y_hablar, args=(mensaje, user_id), daemon=True).start()
-    return jsonify({"ok": True})
+        # ✅ Devolver ambos mensajes para actualizar el chat sin recargar
+        return jsonify({
+            "ok": True,
+            "user_message": mensaje,
+            "ia_message": respuesta
+        })
+
+    except Exception as e:
+        print("Error en responder_y_hablar:", e)
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+    
+
+
 
 # ===================== EJECUCIÓN PRINCIPAL =====================
 if __name__ == "__main__":

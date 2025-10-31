@@ -1,85 +1,229 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cartas Animadas</title>
-<style>
-  body {
-    margin: 0;
-    height: 100vh;
-    background: #f0f0f0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    overflow: hidden;
-  }
-
-  .card-container {
-    position: relative;
-    height: 200px;
-    width: auto;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-  }
-
-  .card-container img {
-    position: absolute;
-    bottom: -50px; /* solo se ve la mitad al inicio */
-    width: 120px;
-    height: 180px;
-    object-fit: cover;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    transform: translateY(100px) rotate(0deg); /* posición inicial abajo */
-    opacity: 0;
-    animation: abanico 1s forwards;
-  }
-
-  /* Posiciones tipo abanico con delay */
-  .card1 { animation-delay: 0.1s; transform-origin: bottom center; }
-  .card2 { animation-delay: 0.2s; transform-origin: bottom center; }
-  .card3 { animation-delay: 0.3s; transform-origin: bottom center; }
-  .card4 { animation-delay: 0.4s; transform-origin: bottom center; }
-  .card5 { animation-delay: 0.5s; transform-origin: bottom center; }
-
-  /* Animación abanico */
-  @keyframes abanico {
-    0% {
-      transform: translateY(100px) rotate(0deg);
-      opacity: 0;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp UI Clone</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", sans-serif;
     }
-    100% {
-      transform: translateY(0px) rotate(var(--rotate));
-      opacity: 1;
+
+    body {
+      background-color: #111b21;
+      color: #e9edef;
+      display: flex;
+      height: 100vh;
     }
-  }
 
-  /* Rotación tipo abanico usando variables CSS */
-  .card1 { --rotate: -20deg; left: -80px; z-index: 1; }
-  .card2 { --rotate: -10deg; left: -40px; z-index: 2; }
-  .card3 { --rotate: 0deg; left: 0px; z-index: 3; }
-  .card4 { --rotate: 10deg; left: 40px; z-index: 2; }
-  .card5 { --rotate: 20deg; left: 80px; z-index: 1; }
+    /* PANEL IZQUIERDO */
+    .sidebar {
+      width: 30%;
+      background-color: #202c33;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #2a3942;
+    }
 
-  /* Hover efecto */
-  .card-container img:hover {
-    transform: scale(1.1) rotate(0deg);
-    z-index: 10;
-  }
+    .sidebar-header {
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: #202c33;
+      border-bottom: 1px solid #2a3942;
+    }
 
-</style>
+    .search-bar {
+      padding: 10px;
+      background-color: #111b21;
+      border: none;
+      width: 90%;
+      margin: 10px auto;
+      border-radius: 10px;
+      color: #e9edef;
+      outline: none;
+    }
+
+    .chats {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .chat {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .chat:hover {
+      background-color: #2a3942;
+    }
+
+    .chat img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+
+    .chat-info {
+      flex: 1;
+    }
+
+    .chat-info h4 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .chat-info p {
+      font-size: 13px;
+      color: #8696a0;
+    }
+
+    /* PANEL DERECHO (CHAT) */
+    .chat-window {
+      flex: 1;
+      background-color: #0b141a;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      background-color: #202c33;
+      border-bottom: 1px solid #2a3942;
+    }
+
+    .chat-header img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+
+    .messages {
+      flex: 1;
+      background-image: url("https://i.imgur.com/Z8xWqvR.png"); /* fondo estilo WhatsApp */
+      background-size: cover;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .message {
+      max-width: 60%;
+      padding: 10px 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .sent {
+      align-self: flex-end;
+      background-color: #005c4b;
+      border-bottom-right-radius: 0;
+    }
+
+    .received {
+      align-self: flex-start;
+      background-color: #202c33;
+      border-bottom-left-radius: 0;
+    }
+
+    .chat-input {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      background-color: #202c33;
+      border-top: 1px solid #2a3942;
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 10px 15px;
+      background-color: #2a3942;
+      border: none;
+      border-radius: 20px;
+      color: #e9edef;
+      outline: none;
+    }
+
+    .chat-input button {
+      background-color: transparent;
+      border: none;
+      color: #8696a0;
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+  </style>
 </head>
 <body>
+  <!-- PANEL IZQUIERDO -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <strong>Chats</strong>
+    </div>
+    <input type="text" class="search-bar" placeholder="Buscar un chat o iniciar uno nuevo">
+    <div class="chats">
+      <div class="chat">
+        <img src="https://i.imgur.com/80CEk2e.png" alt="">
+        <div class="chat-info">
+          <h4>SOPORTE-SMART</h4>
+          <p>Tú: Ah ok</p>
+        </div>
+      </div>
+      <div class="chat">
+        <img src="https://i.imgur.com/5Y8R3Zq.png" alt="">
+        <div class="chat-info">
+          <h4>SmartAssets</h4>
+          <p>Victor: Lo que me está diciendo alg...</p>
+        </div>
+      </div>
+      <div class="chat">
+        <img src="https://i.imgur.com/vUoJfHd.png" alt="">
+        <div class="chat-info">
+          <h4>Carlos G</h4>
+          <p>Bien y tú</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<div class="card-container">
-  <img src="https://picsum.photos/id/237/200/300" alt="Carta 1" class="card1">
-  <img src="https://picsum.photos/id/238/200/300" alt="Carta 2" class="card2">
-  <img src="https://picsum.photos/id/239/200/300" alt="Carta 3" class="card3">
-  <img src="https://picsum.photos/id/240/200/300" alt="Carta 4" class="card4">
-  <img src="https://picsum.photos/id/241/200/300" alt="Carta 5" class="card5">
-</div>
-
+  <!-- PANEL DERECHO -->
+  <div class="chat-window">
+    <div class="chat-header">
+      <img src="https://i.imgur.com/5Y8R3Zq.png" alt="">
+      <div>
+        <strong>Yo (tú)</strong><br>
+        <small>Envia mensajes a este mismo número</small>
+      </div>
+    </div>
+    <div class="messages">
+      <div class="message sent">
+        Quiero que seas parte del futuro con Nu 🌟
+      </div>
+      <div class="message sent">
+        No importa en donde estés, ni la hora que sea...
+      </div>
+      <div class="message sent">
+        Las 10 leyes Heurísticas 🧠
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" placeholder="Escribe un mensaje">
+      <button>📎</button>
+      <button>🎤</button>
+    </div>
+  </div>
 </body>
 </html>
