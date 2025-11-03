@@ -1,6 +1,7 @@
 # ===================== IMPORTACIONES =====================
 import tkinter as tk
 from tkinter import Toplevel                             # Para crear interfaces gráficas (ventana flotante con GIF)
+from tkinter import ttk
 from PIL import Image, ImageTk, ImageSequence     # Para cargar, redimensionar y animar imágenes GIF
 import speech_recognition as sr                   # Para reconocimiento de voz
 import threading                                  # Para manejar hilos
@@ -31,6 +32,37 @@ GIF_SALUDO = "static/permanente.gif"
 GIF_PERMANENTE = "static/permanente.gif"
 POSICION_VENTANA = (100, 100)
 TAMANO_IMAGEN = (200, 200)
+
+# ===================== ESTILO DE CHAT (BURBUJA) =====================
+
+# ========== TEMAS DE COLOR ==========
+CHAT_FONT = ("Segoe UI", 10)
+CHAT_TITLE_FONT = ("Segoe UI", 11, "bold")
+
+THEMES = {
+    "dark": {
+        "CHAT_BG": "#23272f",
+        "CHAT_PANEL": "#181a20",
+        "ACCENT_COLOR": "#4a90e2",
+        "STOP_COLOR": "#e74c3c",
+        "USER_BUBBLE": "#2d3748",
+        "BOT_BUBBLE": "#23272f",
+        "TEXT_COLOR": "#f4f7fb"
+    },
+    "light": {
+        "CHAT_BG": "#F4F7FB",
+        "CHAT_PANEL": "#ffffff",
+        "ACCENT_COLOR": "#4a90e2",
+        "STOP_COLOR": "#e74c3c",
+        "USER_BUBBLE": "#DCF8C6",
+        "BOT_BUBBLE": "#FFFFFF",
+        "TEXT_COLOR": "#22303b"
+    }
+}
+
+# Tema actual (oscuro por defecto)
+current_theme = {k: v for k, v in THEMES["dark"].items()}
+current_theme_name = "dark"
 
 # ===================== CONFIGURACIÓN API Gemini =====================
 genai.configure(api_key="AIzaSyDDc_si0A-u30KM7CkZaGKHYEEfwnkPriU")  # <-- Reemplaza aquí con tu API key
@@ -198,7 +230,7 @@ def dividir_en_frases(texto: str, max_len: int = 150):
 
 def detener_voz():
     """Detiene la voz de Iris inmediatamente."""
-    global detener_voz_flag, audio_actual
+    global detener_voz_flag, audio_actual, hablando
     detener_voz_flag = True
     try:
         if pygame.mixer.get_init():
@@ -209,16 +241,43 @@ def detener_voz():
     except Exception as e:
         print("Error al detener voz:", e)
 
+    # Marcar que dejó de hablar y actualizar color del botón si existe
+    try:
+        hablando = False
+        if ventana:
+            def _upd():
+                try:
+                    if 'bubble_stop_btn' in globals() and bubble_stop_btn:
+                        bubble_stop_btn.config(bg=current_theme["STOP_COLOR"])
+                except Exception:
+                    pass
+            ventana.after(0, _upd)
+    except Exception:
+        pass
+
 
 def hablar_por_frases(texto: str):
     """Convierte texto a voz por fragmentos y reproduce (gTTS + pygame)."""
-    global audio_actual, detener_voz_flag
+    global audio_actual, detener_voz_flag, hablando
 
     frases = dividir_en_frases(texto)
     if not frases:
         return
 
     detener_voz_flag = False
+    # Indicar que ha comenzado a hablar
+    try:
+        hablando = True
+        if ventana:
+            def _upd():
+                try:
+                    if 'bubble_stop_btn' in globals() and bubble_stop_btn:
+                        bubble_stop_btn.config(bg='#27ae60')
+                except Exception:
+                    pass
+            ventana.after(0, _upd)
+    except Exception:
+        pass
 
     for frag in frases:
         if detener_voz_flag:
@@ -253,6 +312,20 @@ def hablar_por_frases(texto: str):
                 os.remove(tmp.name)
             except Exception:
                 pass
+
+    # Al finalizar, marcar que ya no está hablando y actualizar botón
+    try:
+        hablando = False
+        if ventana:
+            def _upd2():
+                try:
+                    if 'bubble_stop_btn' in globals() and bubble_stop_btn:
+                        bubble_stop_btn.config(bg=current_theme["STOP_COLOR"])
+                except Exception:
+                    pass
+            ventana.after(0, _upd2)
+    except Exception:
+        pass
 
 
 # ===================== INTEGRACIÓN CON GEMINI =====================
@@ -417,11 +490,22 @@ def crear_ventana():
     global ventana, canvas, frames_saludo, duraciones_saludo, frames_permanente, duraciones_permanente
     global bubble_window, bubble_text, bubble_entry, escuchar_thread, icono
 
+
+    # Forzar reinicio de variables globales para evitar estados inconsistentes
+    try:
+        if ventana and ventana.winfo_exists():
+            ventana.destroy()
+    except Exception:
+        pass
+    ventana = None
+    canvas = None
+    frames_saludo = []
+    duraciones_saludo = []
+    frames_permanente = []
+    duraciones_permanente = []
+
     # ----------------- VENTANA PRINCIPAL -----------------
-    if 'ventana' in globals() and ventana and ventana.winfo_exists():
-        ventana.deiconify()
-        ventana.lift()
-        return
+    # Siempre crear una nueva ventana y canvas
 
     ventana = tk.Tk()
     ventana.overrideredirect(True)
@@ -545,73 +629,255 @@ bubble_visible = False
 
 def bubble_position_relative():
     """Calcula la posición para que la burbuja quede justo encima del GIF."""
+    # Colocar la burbuja encima del GIF
     if ventana:
         x = ventana.winfo_x()
         y = ventana.winfo_y()
         w = TAMANO_IMAGEN[0]
         h = TAMANO_IMAGEN[1]
-        return (x + w//2 - 160, y - 160)
+        # Dimensiones de la burbuja (menos ancho, más alto)
+        bubble_w = 300
+        bubble_h = 360
+        # Centrar horizontalmente sobre el GIF
+        new_x = x + (w - bubble_w) // 2
+        # Posicionar verticalmente encima del GIF con un pequeño margen
+        new_y = y - bubble_h - 20
+        return (new_x, new_y)
     return POSICION_VENTANA
 
 def create_bubble_window():
     """Crea la burbuja del chat (viñeta) con scroll y botones fijos"""
     global bubble_win, bubble_label, bubble_entry, bubble_send_btn, bubble_close_btn, bubble_stop_btn, bubble_visible, bubble_text
-
     if bubble_win and bubble_win.winfo_exists():
         bubble_win.deiconify()
         bubble_win.lift()
         return
 
     pos = bubble_position_relative()
-    bubble_win = tk.Toplevel()
+
+    global current_theme, current_theme_name
+    def apply_theme():
+        # Actualiza colores de la ventana y widgets
+        bubble_win.config(bg=current_theme["CHAT_BG"])
+        panel.config(bg=current_theme["CHAT_BG"])
+        text_frame.config(bg=current_theme["CHAT_PANEL"])
+        bubble_text.config(bg=current_theme["CHAT_PANEL"], fg=current_theme["TEXT_COLOR"])
+        bottom.config(bg=current_theme["CHAT_BG"])
+        bubble_entry.config(bg="white" if current_theme_name=="light" else current_theme["CHAT_PANEL"], fg=current_theme["TEXT_COLOR"], insertbackground=current_theme["TEXT_COLOR"])
+        bubble_send_btn.config(bg=current_theme["CHAT_BG"], activebackground=current_theme["CHAT_BG"])
+        stop_canvas.config(bg=current_theme["CHAT_BG"])
+        topbar.config(bg=current_theme["CHAT_BG"])
+        theme_btn.config(bg=current_theme["CHAT_BG"], activebackground=current_theme["CHAT_BG"])
+        top_close.config(bg=current_theme["CHAT_BG"])
+        # Tags de burbujas
+        try:
+            bubble_text.tag_configure('user', background=current_theme["USER_BUBBLE"], foreground=current_theme["TEXT_COLOR"])
+            bubble_text.tag_configure('bot', background=current_theme["BOT_BUBBLE"], foreground=current_theme["TEXT_COLOR"])
+            bubble_text.tag_configure('meta', foreground='#bbbbbb' if current_theme_name=="dark" else '#666666')
+        except Exception:
+            pass
+
+    # Hacer que la burbuja sea hija de la ventana principal para que se mueva con ella
+    try:
+        bubble_win = tk.Toplevel(ventana)
+        bubble_win.transient(ventana)
+    except Exception:
+        bubble_win = tk.Toplevel()
+    # Restaurar comportamiento sin borde (como antes): mantener overrideredirect
     bubble_win.overrideredirect(True)
     bubble_win.wm_attributes("-topmost", True)
-    bubble_win.config(bg="#f7f7f8")
-    bubble_win.geometry(f"340x200+{pos[0]}+{pos[1]}")  # tamaño fijo
+    try:
+        bubble_win.wm_attributes('-alpha', 0.98)
+    except Exception:
+        pass
+    bubble_win.config(bg=current_theme["CHAT_BG"])
+    # Ventana más alta y menos ancha: 300x360
+    bubble_win.geometry(f"300x360+{pos[0]}+{pos[1]}")
 
     # -------------------- GRID PRINCIPAL --------------------
-    bubble_win.rowconfigure(0, weight=1)  # Text se expande
-    bubble_win.rowconfigure(1, weight=0)  # fila de botones fija
+    # row 0 = topbar, row1 = panel (expande), row2 = bottom
+    bubble_win.rowconfigure(0, weight=0)
+    bubble_win.rowconfigure(1, weight=1)
+    bubble_win.rowconfigure(2, weight=0)
     bubble_win.columnconfigure(0, weight=1)
 
-    # -------------------- AREA DE TEXTO CON SCROLL --------------------
-    text_frame = tk.Frame(bubble_win, bg="#f7f7f8")
+    # -------------------- AREA DE TEXTO CON SCROLL (dentro de un panel con padding) --------------------
+    panel = tk.Frame(bubble_win, bg=current_theme["CHAT_BG"], bd=0)
+    panel.grid(row=1, column=0, sticky="nsew", padx=10, pady=(8,10))
+    panel.rowconfigure(0, weight=1)
+    panel.columnconfigure(0, weight=1)
+
+    text_frame = tk.Frame(panel, bg=current_theme["CHAT_PANEL"], bd=0, relief='flat')
     text_frame.grid(row=0, column=0, sticky="nsew")
 
-    scrollbar = tk.Scrollbar(text_frame)
+    # Scrollbar estilizada para integrarse con el tema (no fondo blanco)
+    scrollbar = tk.Scrollbar(
+        text_frame,
+        bg=current_theme["CHAT_PANEL"],
+        troughcolor=current_theme["CHAT_PANEL"],
+        activebackground=current_theme["ACCENT_COLOR"],
+        highlightthickness=0
+    )
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     bubble_text = tk.Text(
         text_frame,
         wrap=tk.WORD,
         yscrollcommand=scrollbar.set,
-        bg="#f7f7f8",
-        fg="#111",
-        font=("Arial", 10),
-        padx=8,
-        pady=8,
+        bg=current_theme["CHAT_PANEL"],
+        fg=current_theme["TEXT_COLOR"],
+        font=CHAT_FONT,
+        padx=10,
+        pady=10,
+        bd=0,
+        relief='flat',
         state=tk.DISABLED
     )
     bubble_text.pack(fill=tk.BOTH, expand=True)
     scrollbar.config(command=bubble_text.yview)
 
+    # Tags para mensajes (estilo burbuja)
+    try:
+        bubble_text.tag_configure('user', background=current_theme["USER_BUBBLE"], foreground=current_theme["TEXT_COLOR"], lmargin1=40, lmargin2=40, rmargin=8, spacing3=6, justify='right', font=CHAT_FONT)
+        bubble_text.tag_configure('bot', background=current_theme["BOT_BUBBLE"], foreground=current_theme["TEXT_COLOR"], lmargin1=8, lmargin2=8, rmargin=40, spacing3=6, justify='left', font=CHAT_FONT)
+        bubble_text.tag_configure('meta', foreground='#bbbbbb', font=("Segoe UI", 9), justify='center')
+    except Exception:
+        pass
+
+
+    # -------------------- BARRA SUPERIOR (SOL/LUNA + X) --------------------
+    topbar = tk.Frame(bubble_win, bg=current_theme["CHAT_BG"], bd=0)
+    topbar.grid(row=0, column=0, sticky='ew')
+    topbar.columnconfigure(0, weight=1)
+
+    # Botón de tema (sol/luna)
+    def toggle_theme():
+        nonlocal theme_btn
+        global current_theme, current_theme_name
+        if current_theme_name == "dark":
+            current_theme = {k: v for k, v in THEMES["light"].items()}
+            current_theme_name = "light"
+            theme_btn.config(text="🌙")
+        else:
+            current_theme = {k: v for k, v in THEMES["dark"].items()}
+            current_theme_name = "dark"
+            theme_btn.config(text="🌞")
+        apply_theme()
+
+    theme_btn = tk.Button(topbar, text="🌞", command=toggle_theme, bg=current_theme["CHAT_BG"], fg="#ffaa00", bd=0, relief='flat', font=("Segoe UI", 12))
+    theme_btn.grid(row=0, column=0, sticky='w', padx=(6,0), pady=6)
+
+    # Botón cerrar (X)
+    top_close = tk.Button(topbar, text="✕", command=hide_bubble, bg=current_theme["CHAT_BG"], fg="#666666", bd=0, relief='flat', font=("Segoe UI", 10, 'bold'))
+    top_close.grid(row=0, column=1, sticky='e', padx=(0,6), pady=6)
+
     # -------------------- BARRA INFERIOR FIJA --------------------
-    bottom = tk.Frame(bubble_win, bg="#f7f7f8")
-    bottom.grid(row=1, column=0, sticky="ew", pady=(4,4))
+    bottom = tk.Frame(bubble_win, bg=current_theme["CHAT_BG"], bd=0)
+    bottom.grid(row=2, column=0, sticky="ew", padx=10, pady=(0,10))
     bottom.columnconfigure(0, weight=1)  # Entry se expande
 
-    bubble_entry = tk.Entry(bottom, font=("Arial", 10))
-    bubble_entry.grid(row=0, column=0, sticky="ew", padx=(4,4))
 
-    bubble_send_btn = tk.Button(bottom, text="Enviar", command=bubble_send, bg="#00bfff", fg="white")
-    bubble_send_btn.grid(row=0, column=1, padx=(0, 4))
+    # Entry simple sin bordes
+    bubble_entry = tk.Entry(
+        bottom,
+        font=CHAT_FONT,
+        bd=0,
+        relief='flat',
+        bg=current_theme["CHAT_PANEL"] if current_theme_name=="dark" else "white",
+        fg=current_theme["TEXT_COLOR"],
+        insertbackground=current_theme["TEXT_COLOR"],
+        width=30
+    )
+    bubble_entry.grid(row=0, column=0, sticky="ew", padx=(6,6), pady=4)
+    bubble_entry.insert(0, "Escribe un mensaje")  # Placeholder
+    bubble_entry.config(fg='gray')  # Color gris para el placeholder
+    
+    # Eventos para el placeholder
+    def on_entry_click(event):
+        if bubble_entry.get() == "Escribe un mensaje":
+            bubble_entry.delete(0, tk.END)
+            bubble_entry.config(fg=current_theme["TEXT_COLOR"])
+    
+    def on_focus_out(event):
+        if bubble_entry.get() == "":
+            bubble_entry.insert(0, "Escribe un mensaje")
+            bubble_entry.config(fg='gray')
+    
+    bubble_entry.bind('<FocusIn>', on_entry_click)
+    bubble_entry.bind('<FocusOut>', on_focus_out)
+    # Enviar con Enter (Return)
+    bubble_entry.bind('<Return>', lambda e: bubble_send())
+    
+    # No necesitamos configuración adicional para el entry simple
 
-    bubble_stop_btn = tk.Button(bottom, text="⏹", command=detener_voz, bg="#ff5555", fg="white")
-    bubble_stop_btn.grid(row=0, column=2, padx=(0, 4))
+    # Botón enviar como icono (papel/avión)
+    # Intentar cargar imagen de envío (usa varios nombres comunes en static/). Si no existe, usar el símbolo ✈
+    bubble_send_img = None
+    for img_name in ("static/send_plane.png", "static/send_icon.png", "static/send.png", "static/plane.png", "static/enviar.png"):
+        try:
+            if os.path.exists(img_name):
+                bubble_send_img = ImageTk.PhotoImage(Image.open(img_name).resize((22, 22), Image.Resampling.LANCZOS))
+                break
+        except Exception:
+            bubble_send_img = None
 
-    bubble_close_btn = tk.Button(bottom, text="❌", command=hide_bubble, bg="#dddddd")
-    bubble_close_btn.grid(row=0, column=3, padx=(0,4))
+    if bubble_send_img:
+        bubble_send_btn = tk.Button(bottom, image=bubble_send_img, command=bubble_send, bg=current_theme["CHAT_BG"], activebackground=current_theme["CHAT_BG"], bd=0, relief='flat')
+        bubble_send_btn.image = bubble_send_img  # mantener referencia
+    else:
+        bubble_send_btn = tk.Button(bottom, text="✈", command=bubble_send, bg=current_theme["CHAT_BG"], fg=current_theme["ACCENT_COLOR"], activebackground=current_theme["CHAT_BG"], bd=0, relief='flat', padx=12, pady=6, font=("Segoe UI", 12, 'bold'))
+    bubble_send_btn.grid(row=0, column=1, padx=(6, 4))
 
+    # Canvas circular para el botón de estado
+    stop_size = 24
+    stop_canvas = tk.Canvas(bottom, width=stop_size, height=stop_size, bg=current_theme["CHAT_BG"], highlightthickness=0)
+    stop_canvas.grid(row=0, column=2, padx=(4, 4))
+    
+    # Crear círculo en el canvas que cambia de color
+    def update_stop_button(color):
+        stop_canvas.delete("all")
+        # Crear un único círculo que ocupa todo el espacio
+        padding = 2
+        stop_canvas.create_oval(padding, padding, 
+                              stop_size - padding, stop_size - padding,
+                              fill=color, outline=color,
+                              tags="circle")
+    
+    # Evento de clic para el canvas
+    stop_canvas.bind("<Button-1>", lambda e: toggle_voice_state())
+    
+    # Reemplazar la referencia global del botón de stop
+    bubble_stop_btn = stop_canvas
+    update_stop_button(current_theme["STOP_COLOR"])  # Color inicial
+
+    # Inicializar estado visual del botón de habla
+    def update_speaking_button_color():
+        try:
+            if 'bubble_stop_btn' in globals() and bubble_stop_btn:
+                color = '#27ae60' if hablar_estado_get() else current_theme["STOP_COLOR"]
+                bubble_stop_btn.config(bg=color)
+        except Exception:
+            pass
+
+    # pequeño helper para exponer el estado de 'hablando'
+    def hablar_estado_get():
+        try:
+            return bool(hablando)
+        except Exception:
+            return False
+
+    # toggle para poder detener o reactivar: si está hablando => detener, si no => no acción
+    def toggle_voice_state():
+        if hablar_estado_get():
+            detener_voz()
+
+    # llamar la primera vez para aplicar color correcto
+    try:
+        update_speaking_button_color()
+    except Exception:
+        pass
+
+    apply_theme()
     bubble_visible = True
 
 
@@ -636,16 +902,52 @@ def show_bubble_with_text(text, animate=True):
         bubble_text.delete("1.0", tk.END)
         bubble_text.insert(tk.END, text)
         bubble_text.config(state=tk.DISABLED)
+        # Si el usuario está al final, mantener autoscroll para mostrar lo último.
+        try:
+            first, last = bubble_text.yview()
+            if last >= 0.98:
+                bubble_text.see(tk.END)
+        except Exception:
+            bubble_text.see(tk.END)
 
 def _animate_text(idx, text):
     global bubble_anim_id
-    if idx <= len(text):
-        bubble_text.config(state=tk.NORMAL)
-        bubble_text.delete("1.0", tk.END)
-        bubble_text.insert(tk.END, text[:idx])
-        bubble_text.config(state=tk.DISABLED)
-        bubble_anim_id = ventana.after(18, _animate_text, idx + 1, text)
-    else:
+    # Animar insertando incrementalmente en lugar de borrar todo cada vez.
+    # Esto evita que la vista se reinicie al inicio y permite que el usuario
+    # haga scroll manual sin que el contenido le vuelva automáticamente.
+    try:
+        # Si idx == 0: inicializar borrando el contenido previo
+        if idx == 0:
+            try:
+                bubble_text.config(state=tk.NORMAL)
+                bubble_text.delete("1.0", tk.END)
+                bubble_text.config(state=tk.DISABLED)
+            except Exception:
+                pass
+
+        # Si quedan caracteres por mostrar, insertar el siguiente carácter
+        if idx < len(text):
+            # Antes de insertar, comprobar si el usuario está al final
+            try:
+                first, last = bubble_text.yview()
+                should_autoscroll = (last >= 0.98)
+            except Exception:
+                should_autoscroll = True
+
+            try:
+                bubble_text.config(state=tk.NORMAL)
+                # Insertar el siguiente carácter (mantiene lo anterior)
+                bubble_text.insert(tk.END, text[idx])
+                bubble_text.config(state=tk.DISABLED)
+                if should_autoscroll:
+                    bubble_text.see(tk.END)
+            except Exception:
+                pass
+
+            bubble_anim_id = ventana.after(18, _animate_text, idx + 1, text)
+        else:
+            bubble_anim_id = None
+    except Exception:
         bubble_anim_id = None
 
 def hide_bubble():
@@ -723,12 +1025,25 @@ def agregar_mensaje(texto):
             create_bubble_window()
     except Exception:
         pass
-
     try:
         if not bubble_text:
             return
         bubble_text.config(state=tk.NORMAL)
-        bubble_text.insert(tk.END, texto + "\n\n")
+
+        tag = 'bot'
+        # Mensajes del frontend suelen venir con prefijo "Tú: "
+        if texto.strip().startswith("Tú:") or texto.strip().startswith("Tu:"):
+            tag = 'user'
+            # quitar el prefijo para mostrar solo el contenido
+            cuerpo = texto.split(':', 1)[1].strip() if ':' in texto else texto
+        elif texto.strip().startswith("⚠️") or texto.strip().startswith("Error"):
+            tag = 'meta'
+            cuerpo = texto
+        else:
+            cuerpo = texto
+
+        # Insertar con tag para aplicar estilo de burbuja
+        bubble_text.insert(tk.END, cuerpo + "\n\n", tag)
         bubble_text.see(tk.END)
         bubble_text.config(state=tk.DISABLED)
     except Exception as e:
@@ -869,11 +1184,34 @@ def activar():
             icono.stop()
             icono = None
     except:
-        pass
+        icono = None
 
-    # Si ya hay ventana visible, no crear otra
-    if ventana and ventana.winfo_exists():
-        return jsonify({"status": "Iris ya está activa"})
+    # Si la ventana existe, solo mostrarla de nuevo y reiniciar escucha y saludo
+    try:
+        if ventana and ventana.winfo_exists():
+            ventana.deiconify()
+            ventana.lift()
+            # Reiniciar escucha y saludo
+            global escuchando, escuchar_thread, current_user_id
+            escuchando = True
+            # Asegurar que el current_user_id corresponde al usuario actual
+            try:
+                with current_user_id_lock:
+                    current_user_id = session.get("user_id")
+            except Exception:
+                pass
+            try:
+                if not ("escuchar_thread" in globals()) or not escuchar_thread.is_alive():
+                    escuchar_thread = threading.Thread(target=escuchar_loop, daemon=True)
+                    escuchar_thread.start()
+            except Exception:
+                escuchar_thread = threading.Thread(target=escuchar_loop, daemon=True)
+                escuchar_thread.start()
+            # Lanzar saludo inicial (se guardará en BD si current_user_id está asignado)
+            threading.Thread(target=hablar_y_guardar, args=("Hola, soy Iris. Estoy lista para ayudarte.",), daemon=True).start()
+            return jsonify({"status": "Iris activada correctamente"})
+    except Exception:
+        pass
 
     escuchando = True
 
@@ -899,23 +1237,28 @@ def desactivar():
     except Exception as e:
         print("Error al detener voz:", e)
 
+
     def cerrar_todo():
-        """Cerrar ventana e icono sin bloquear Flask"""
+        """Oculta ventana e icono sin bloquear Flask"""
         global ventana, icono
         try:
             if ventana and ventana.winfo_exists():
-                ventana.destroy()
-                ventana = None
+                ventana.withdraw()
         except Exception as e:
-            print("Error al cerrar ventana:", e)
-            ventana = None
+            print("Error al ocultar ventana:", e)
 
         try:
             if icono:
-                icono.stop()
-                icono = None
+                icono.visible = True
         except Exception as e:
-            print("Error al detener icono:", e)
+            print("Error al mostrar icono:", e)
+        # Asegurar también ocultar la burbuja si existe
+        try:
+            global bubble_win
+            if bubble_win and bubble_win.winfo_exists():
+                bubble_win.withdraw()
+        except Exception:
+            pass
 
     # Cerrar en segundo plano para no bloquear la respuesta al navegador
     threading.Thread(target=cerrar_todo, daemon=True).start()

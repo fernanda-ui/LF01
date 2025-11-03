@@ -85,17 +85,23 @@ const chatArea = document.getElementById('chatArea');
 const chatTitle = document.getElementById('chatTitle');
 
 function renderChatArea() {
-    const msgs = state.sessions[state.activeKey] || [];
-    chatTitle.textContent = `Chat — ${friendlyDate(state.activeKey)}`;
-    chatArea.innerHTML = '';
-    msgs.forEach(m => {
-        const div = document.createElement('div');
-        div.className = 'msg ' + (m.tipo === 'usuario' ? 'user' : 'alira');
-        const safeMessage = /<a\s+href=/.test(m.mensaje) ? m.mensaje : escapeHtml(m.mensaje);
-        div.innerHTML = `<div>${safeMessage}</div>`;
-        chatArea.appendChild(div);
-    });
+  const msgs = state.sessions[state.activeKey] || [];
+  chatTitle.textContent = `Chat — ${friendlyDate(state.activeKey)}`;
+  chatArea.innerHTML = '';
+  // Añadir mensajes en orden (antiguos -> nuevos)
+  msgs.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.tipo === 'usuario' ? 'user' : 'alira');
+    const safeMessage = /<a\s+href=/.test(m.mensaje) ? m.mensaje : escapeHtml(m.mensaje);
+    div.innerHTML = `<div>${safeMessage}</div>`;
+    chatArea.appendChild(div);
+  });
+  // Forzar scroll al final para mostrar los mensajes más recientes
+  try {
+    chatArea.scrollTop = chatArea.scrollHeight;
+  } catch (e) {
     scrollToBottom(chatArea);
+  }
 }
 
 // ✅ Función confiable de scroll automático
@@ -139,8 +145,10 @@ async function loadHistory() {
             if (!groups[key]) groups[key] = [];
             groups[key].push(m);
         });
-        state.sessions = groups;
-        if (!state.sessions[state.activeKey]) state.activeKey = Object.keys(state.sessions)[0] || todayKey();
+    state.sessions = groups;
+    // Seleccionar la sesión/día más reciente automáticamente
+    const sortedKeys = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
+    if (!state.sessions[state.activeKey]) state.activeKey = sortedKeys[0] || todayKey();
         renderChatList();
         renderChatArea();
     } catch (e) {
@@ -192,6 +200,7 @@ if (irisActiva) {
   activateBtn.classList.add('off');
 }
 
+
 activateBtn.addEventListener('click', async () => {
   loader.classList.remove('hidden');
   fabImg.classList.add('hidden');
@@ -207,6 +216,7 @@ activateBtn.addEventListener('click', async () => {
       activateBtn.classList.remove('off');
       activateBtn.classList.add('on');
       showToast(j.status || 'Iris activada');
+      await loadHistory(); // Refresca historial y mensajes tras activar
     } catch (e) {
       showToast('No se pudo activar Iris');
     }
@@ -220,6 +230,7 @@ activateBtn.addEventListener('click', async () => {
       activateBtn.classList.remove('on');
       activateBtn.classList.add('off');
       showToast(j.status || 'Iris desactivada');
+      await loadHistory(); // Refresca historial y mensajes tras desactivar
     } catch (e) {
       showToast('Error al desactivar Iris');
     }
@@ -354,6 +365,9 @@ async function enviarMensajeWeb() {
     });
     const data = await res.json();
 
+    // Refresca historial y mensajes tras enviar
+    await loadHistory();
+
     if (data.ok) {
       agregarMensajeIAConAcciones(data.ia_message);
     } else {
@@ -377,50 +391,24 @@ chatInputWeb.addEventListener('keypress', (e) => {
 // ========================
 // Inicialización
 // ========================
+
 // ========================
-// startPolling (seguro)
+// startPolling (ahora usa loadHistory para refrescar historial y mensajes)
 // ========================
 function startPolling() {
-  // Guarda el id por si quieres cancelarlo luego
   if (state.polling) clearInterval(state.polling);
-  // Llama a actualizarChat periódicamente (cada 3s)
   state.polling = setInterval(async () => {
     try {
-      await actualizarChat();
+      await loadHistory();
     } catch (err) {
       console.error('Error en startPolling:', err);
     }
   }, 3000);
 }
+
 // Carga inicial del historial y comienza el polling
 loadHistory();
 startPolling();
-
-
-// ========================
-// Actualización automática del chat
-// ========================
-
-async function actualizarChat() {
-  try {
-    const res = await fetch('/get_chat');
-    const data = await res.json();
-
-    const contenedor = document.querySelector('.contenedor-chat');
-    contenedor.innerHTML = ''; // Limpia el chat antes de volver a cargar
-
-    data.forEach(m => {
-      const div = document.createElement('div');
-      div.className = m.sender === 'user' ? 'mensaje-usuario' : 'mensaje-ia';
-      div.textContent = m.text;
-      contenedor.appendChild(div);
-    });
-
-    contenedor.scrollTop = contenedor.scrollHeight;
-  } catch (e) {
-    console.error('Error al actualizar chat:', e);
-  }
-}
 
 
 document.addEventListener('DOMContentLoaded', () => {

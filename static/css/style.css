@@ -817,4 +817,11 @@ html, body {
   display: none !important;
 }
 
+@media (max-width: 768px) {
+  .card-container {
+    display: none;
+  }
+}
+
+
 

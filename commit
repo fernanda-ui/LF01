@@ -21,7 +21,7 @@ git push -u origin main --force
 Cada vez que hagas cambios:
 
 git add .
-git commit -m "feat(chat-ui): se agrego input de texto y botones enviar/+ para el chat; queda pendiente implementar respuesta automática de Iris mediante el chat web."
+git commit -m "Se hicieron cambios en la interfaz de los chats"
 git push
 
 
