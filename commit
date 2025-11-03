@@ -21,7 +21,7 @@ git push -u origin main --force
 Cada vez que hagas cambios:
 
 git add .
-git commit -m "Se hicieron cambios en la interfaz del chat flotante, el chat de respuesta, se ajusto el boton de activar Iris, se ajustaron erorres en los chat al crear un nuevo usuario y se modifico la sincronizacion de los mensajes"
+git commit -m "Se movieron las variables de entornos al .env"
 git push
 
 
