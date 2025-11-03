@@ -24,12 +24,15 @@ POSICION_VENTANA = (100, 100)         # Posición de la ventana flotante
 TAMANO_IMAGEN = (200, 200)            # Tamaño de la animación
 
 # ===================== CONEXIÓN A BASE DE DATOS (SQL Server) =====================
-MSSQL_DRIVER = "ODBC Driver 17 for SQL Server"
-MSSQL_SERVER = "FER\\FERNANDA"
-MSSQL_DATABASE = "LF01"
-MSSQL_UID = "sa"
-MSSQL_PWD = "Luisa3022679731"
-USE_TRUSTED_CONNECTION = False       
+MSSQL_DRIVER = os.environ.get("MSSQL_DRIVER", "ODBC Driver 17 for SQL Server")
+MSSQL_SERVER = os.environ.get("MSSQL_SERVER", "FER\\FERNANDA")
+MSSQL_DATABASE = os.environ.get("MSSQL_DATABASE", "LF01")
+MSSQL_UID = os.environ.get("MSSQL_UID", "sa")
+MSSQL_PWD = os.environ.get("MSSQL_PWD", "")
+USE_TRUSTED_CONNECTION = os.environ.get("USE_TRUSTED_CONNECTION", "False").lower() in ("1", "true", "yes")
+
+if not MSSQL_PWD:
+    print("Warning (pruebas/irisAnt.py): MSSQL_PWD no está definida en las variables de entorno.")
 
 
 # ===================== FUNCIONES AUXILIARES BASE DE DATOS =====================

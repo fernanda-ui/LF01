@@ -65,7 +65,49 @@ current_theme = {k: v for k, v in THEMES["dark"].items()}
 current_theme_name = "dark"
 
 # ===================== CONFIGURACIÓN API Gemini =====================
-genai.configure(api_key="AIzaSyDDc_si0A-u30KM7CkZaGKHYEEfwnkPriU")  # <-- Reemplaza aquí con tu API key
+# Cargar variables de entorno opcionalmente desde un archivo .env si python-dotenv está instalado
+import os
+try:
+    # Import dinámico para evitar errores de linter si python-dotenv no está instalado
+    import importlib
+    dotenv = importlib.import_module('dotenv')
+    dotenv.load_dotenv()
+    _ENV_LOADED_VIA = 'python-dotenv'
+except Exception:
+    # Intentar leer .env manualmente como fallback
+    _ENV_LOADED_VIA = 'manual'
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    try:
+        if os.path.exists(env_path):
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if '=' in line:
+                        k, v = line.split('=', 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        # Si el valor está vacío, saltarlo (no escribir variables vacías)
+                        if not v:
+                            continue
+                        # No sobrescribir variables ya definidas en el entorno, excepto si la existente está vacía
+                        if k:
+                            existing = os.environ.get(k)
+                            if existing is None or existing == "":
+                                os.environ[k] = v
+    except Exception as e:
+        print('Warning: no se pudo leer .env manualmente:', e)
+
+# Leer claves y configuraciones sensibles desde variables de entorno
+GENAI_API_KEY = os.environ.get("GENAI_API_KEY")
+if GENAI_API_KEY:
+    try:
+        genai.configure(api_key=GENAI_API_KEY)
+    except Exception as e:
+        print("Warning: fallo al configurar genai con GENAI_API_KEY:", e)
+else:
+    print("Warning: GENAI_API_KEY no está definida. Las llamadas a Gemini pueden fallar en producción.")
 
 # ===================== INICIALIZAR REPRODUCTOR (gTTS + pygame) =====================
 # Inicializa pygame mixer; si falla por headless, revisa entorno.
@@ -78,12 +120,34 @@ audio_actual = None
 detener_voz_flag = False
 
 # ===================== CONEXIÓN A BASE DE DATOS (SQL Server) =====================
-MSSQL_DRIVER = "ODBC Driver 17 for SQL Server"
-MSSQL_SERVER = "FER\\FERNANDA"
-MSSQL_DATABASE = "LF01"
-MSSQL_UID = "sa"
-MSSQL_PWD = "Luisa3022679731"
-USE_TRUSTED_CONNECTION = False
+MSSQL_DRIVER = os.environ.get("MSSQL_DRIVER", "ODBC Driver 17 for SQL Server")
+MSSQL_SERVER = os.environ.get("MSSQL_SERVER", "FER\\FERNANDA")
+MSSQL_DATABASE = os.environ.get("MSSQL_DATABASE", "LF01")
+# Credenciales sensibles: preferiblemente configurar en variables de entorno
+MSSQL_UID = os.environ.get("MSSQL_UID")
+MSSQL_PWD = os.environ.get("MSSQL_PWD")
+USE_TRUSTED_CONNECTION = os.environ.get("USE_TRUSTED_CONNECTION", "False").lower() in ("1", "true", "yes")
+
+if not MSSQL_UID or not MSSQL_PWD:
+    print("Warning: MSSQL_UID or MSSQL_PWD no están definidos. Configure las variables de entorno MSSQL_UID y MSSQL_PWD para producción.")
+
+# Cache para servidor MSSQL que funcionando (evita reintentos costosos en cada llamada)
+resolved_mssql_server = None
+resolved_mssql_lock = threading.Lock()
+
+# ===================== OTRAS CONFIGURACIONES SENSIBLES (desde env) =====================
+RECAPTCHA_SECRET_KEY = os.environ.get("RECAPTCHA_SECRET_KEY")
+if not RECAPTCHA_SECRET_KEY:
+    print("Warning: RECAPTCHA_SECRET_KEY no definida. reCAPTCHA fallará si no la configuras en el entorno.")
+
+FLASK_SECRET_KEY = os.environ.get("FLASK_SECRET_KEY")
+if not FLASK_SECRET_KEY:
+    print("Warning: FLASK_SECRET_KEY no definida. Usando valor por defecto (no seguro) para desarrollo.")
+
+SMTP_EMAIL = os.environ.get("SMTP_EMAIL")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+if not SMTP_EMAIL or not SMTP_PASSWORD:
+    print("Warning: SMTP_EMAIL o SMTP_PASSWORD no definidos. El envío de correos fallará sin estas variables.")
 
 # ===================== FUNCIONES AUXILIARES BASE DE DATOS =====================
 def get_user_info(user_id):
@@ -104,11 +168,59 @@ def get_user_info(user_id):
     return None
 def get_connection():
     """Crea y devuelve una conexión a SQL Server"""
-    if USE_TRUSTED_CONNECTION:
-        conn_str = f"DRIVER={{{MSSQL_DRIVER}}};SERVER={MSSQL_SERVER};DATABASE={MSSQL_DATABASE};Trusted_Connection=yes;"
-    else:
-        conn_str = f"DRIVER={{{MSSQL_DRIVER}}};SERVER={MSSQL_SERVER};DATABASE={MSSQL_DATABASE};UID={MSSQL_UID};PWD={MSSQL_PWD};"
-    return pyodbc.connect(conn_str, autocommit=False)
+    global resolved_mssql_server, resolved_mssql_lock
+
+    def build_conn_str(server):
+        if USE_TRUSTED_CONNECTION:
+            return f"DRIVER={{{MSSQL_DRIVER}}};SERVER={server};DATABASE={MSSQL_DATABASE};Trusted_Connection=yes;"
+        return f"DRIVER={{{MSSQL_DRIVER}}};SERVER={server};DATABASE={MSSQL_DATABASE};UID={MSSQL_UID};PWD={MSSQL_PWD};"
+
+    # Si ya resolvimos un servidor que funciona, úsalo primero (evita reintentos costosos)
+    with resolved_mssql_lock:
+        cached = resolved_mssql_server
+
+    if cached:
+        try:
+            conn_str = build_conn_str(cached)
+            return pyodbc.connect(conn_str, autocommit=False, timeout=3)
+        except Exception as e:
+            # cache stale, limpiarla y continuar con resolución
+            print("Cached MSSQL server failed, clearing cache:", cached, "error:", e)
+            with resolved_mssql_lock:
+                resolved_mssql_server = None
+
+    # Intentar con la cadena original pero con timeout corto
+    try_servers = [MSSQL_SERVER]
+
+    # Si la cadena original es una instancia nombrada, preparar variantes
+    try:
+        if '\\' in MSSQL_SERVER:
+            host, instance = MSSQL_SERVER.split('\\', 1)
+            try_servers.extend([f"localhost\\{instance}", f"127.0.0.1\\{instance}", f"(local)\\{instance}", f"127.0.0.1,1433", f"localhost,1433"])
+        else:
+            try_servers.extend(["localhost", "127.0.0.1", "127.0.0.1,1433", "localhost,1433"])
+    except Exception:
+        try_servers.extend(["localhost", "127.0.0.1", "127.0.0.1,1433"])
+
+    last_exc = None
+    for s in try_servers:
+        conn_str = build_conn_str(s)
+        try:
+            # usar timeout corto para evitar bloqueos largos
+            conn = pyodbc.connect(conn_str, autocommit=False, timeout=3)
+            # cachear la variante que funcionó
+            with resolved_mssql_lock:
+                resolved_mssql_server = s
+            if s != MSSQL_SERVER:
+                print("Connected using alternative server:", s)
+            return conn
+        except Exception as e:
+            print(f"Attempt to connect to {s} failed:", e)
+            last_exc = e
+
+    # Si llegamos aquí, ninguna variante conectó
+    print("All attempts to connect to SQL Server failed.")
+    raise last_exc if last_exc else Exception("Unknown DB connection error")
 
 
 def hash_password(password: str) -> str:
@@ -541,25 +653,46 @@ def crear_ventana():
     usar_saludo = True
 
     def animar():
-        nonlocal frame_actual
+        # Referenciar variables del scope exterior
+        nonlocal frame_actual, usar_saludo
         frames = frames_saludo if usar_saludo else frames_permanente
         duraciones = duraciones_saludo if usar_saludo else duraciones_permanente
         if frames:
-            canvas.delete("all")
-            frame = frames[frame_actual % len(frames)]
-            canvas.create_image(TAMANO_IMAGEN[0]//2, TAMANO_IMAGEN[1]//2, anchor=tk.CENTER, image=frame)
-            delay = duraciones[frame_actual % len(duraciones)] if duraciones else 80
-            frame_actual = (frame_actual + 1) % len(frames)
+            try:
+                canvas.delete("all")
+                frame = frames[frame_actual % len(frames)]
+                canvas.create_image(TAMANO_IMAGEN[0]//2, TAMANO_IMAGEN[1]//2, anchor=tk.CENTER, image=frame)
+                delay = duraciones[frame_actual % len(duraciones)] if duraciones else 80
+                frame_actual = (frame_actual + 1) % len(frames)
+            except Exception as e:
+                # Si ocurre un error al dibujar el frame, registrarlo y continuar
+                print("Error animar frame:", e)
+                delay = 200
             ventana.after(delay, animar)
         else:
+            # Fallback visual simple si no se pudieron cargar frames
+            try:
+                canvas.delete("all")
+                canvas.create_rectangle(0, 0, TAMANO_IMAGEN[0], TAMANO_IMAGEN[1], fill='white', outline='')
+            except Exception:
+                pass
             ventana.after(200, animar)
 
     # ==================== FUNCIONES BANDEJA ====================
     def ocultar_ventana():
         try:
+            # Oculta la ventana principal
             ventana.withdraw()
+            # Mostrar el icono de bandeja si existe para que el usuario pueda restaurar
             if icono:
-                icono.visible = True
+                try:
+                    icono.visible = True
+                except Exception:
+                    try:
+                        if hasattr(icono, 'update'):
+                            icono.update()
+                    except Exception:
+                        pass
         except Exception:
             pass
 
@@ -606,6 +739,11 @@ def crear_ventana():
     canvas.bind("<Button-1>", guardar_pos)
     canvas.bind("<B1-Motion>", mover_ventana)
     canvas.bind("<Double-Button-1>", lambda e: ocultar_ventana())
+    # En algunos entornos Windows el canvas puede no recibir el doble clic, ligar también el evento a la ventana
+    try:
+        ventana.bind("<Double-Button-1>", lambda e: ocultar_ventana())
+    except Exception:
+        pass
 
     # Hilo de escucha (voz)
     escuchar_thread = threading.Thread(target=escuchar_loop, daemon=True)
@@ -879,6 +1017,14 @@ def create_bubble_window():
 
     apply_theme()
     bubble_visible = True
+    try:
+        # Forzar foco en la burbuja y en el entry recién creada
+        if bubble_win:
+            bubble_win.focus_force()
+        if bubble_entry:
+            bubble_entry.focus_set()
+    except Exception:
+        pass
 
 
 def mover_burbuja_con_gif():
@@ -892,6 +1038,24 @@ def show_bubble_with_text(text, animate=True):
     try:
         bubble_win.deiconify()
         bubble_win.lift()
+        try:
+            # Asegurar que la burbuja y su entry reciban el foco para poder escribir
+            if bubble_win:
+                bubble_win.focus_force()
+            if bubble_entry:
+                bubble_entry.focus_set()
+                try:
+                    bubble_entry.focus_force()
+                except Exception:
+                    pass
+            try:
+                # Capturar eventos en la burbuja para asegurar que reciba teclado
+                if bubble_win:
+                    bubble_win.grab_set()
+            except Exception:
+                pass
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -953,6 +1117,11 @@ def _animate_text(idx, text):
 def hide_bubble():
     global bubble_visible
     if bubble_win and bubble_win.winfo_exists():
+        try:
+            # Liberar cualquier grab activo antes de ocultar
+            bubble_win.grab_release()
+        except Exception:
+            pass
         bubble_win.withdraw()
     bubble_visible = False
 
@@ -1053,7 +1222,7 @@ def agregar_mensaje(texto):
 
 # ===================== FLASK WEB APP ===================== #
 app = Flask(__name__)
-app.secret_key = "clave_secreta_segura"
+app.secret_key = FLASK_SECRET_KEY if FLASK_SECRET_KEY else "clave_secreta_segura"
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1064,24 +1233,55 @@ def login():
 
         # ===  VALIDAR reCAPTCHA ===
         recaptcha_response = request.form.get('g-recaptcha-response')
-        secret_key = "6LcWmeorAAAAANAU3YgXlw8X_9fveTarCRZIzoEv" 
         verify_url = "https://www.google.com/recaptcha/api/siteverify"
-        data = {"secret": secret_key, "response": recaptcha_response}
-
+        data = {"secret": RECAPTCHA_SECRET_KEY, "response": recaptcha_response}
         import requests  # por si no lo tienes arriba
-        response = requests.post(verify_url, data=data)
-        result = response.json()
+        try:
+            response = requests.post(verify_url, data=data)
+        except Exception as e:
+            print("Error enviando verificación reCAPTCHA:", e)
+            response = None
+
+        if not response:
+            error = "No se pudo validar reCAPTCHA (error de red). Intenta de nuevo." 
+            return render_template('login.html', error=error)
+
+        try:
+            result = response.json()
+        except Exception as e:
+            print("Error parseando respuesta reCAPTCHA:", e)
+            error = "Respuesta inválida de reCAPTCHA. Intenta de nuevo." 
+            return render_template('login.html', error=error)
 
         if not result.get("success"):
             error = "Por favor, verifica el reCAPTCHA antes de continuar."
             return render_template('login.html', error=error)
 
         # === Si el CAPTCHA fue validado, sigue con el login normal ===
-        con = get_connection()
-        cur = con.cursor()
-        cur.execute("SELECT id, username, password FROM users WHERE username = ? OR email = ?", (username_or_email, username_or_email))
-        user = cur.fetchone()
-        con.close()
+        try:
+            con = get_connection()
+        except Exception as e:
+            print("Error obteniendo conexión a la BD en login:", e)
+            error = "No se puede conectar a la base de datos. Intenta más tarde."
+            return render_template('login.html', error=error)
+
+        try:
+            cur = con.cursor()
+            cur.execute("SELECT id, username, password FROM users WHERE username = ? OR email = ?", (username_or_email, username_or_email))
+            user = cur.fetchone()
+        except Exception as e:
+            print("Error ejecutando consulta en login:", e)
+            error = "Error interno al consultar usuarios. Intenta más tarde."
+            try:
+                con.close()
+            except Exception:
+                pass
+            return render_template('login.html', error=error)
+        finally:
+            try:
+                con.close()
+            except Exception:
+                pass
 
         if not user:
             error = "El usuario es incorrecto."
@@ -1309,8 +1509,13 @@ def forgot_password():
 
 def send_reset_email(email, link):
     # Configura tu servidor SMTP aquí
-    remitente = "luciacar1303@gmail.com"
-    password = "qdfe gqix rvqk yday"
+    # Usar credenciales desde variables de entorno
+    remitente = SMTP_EMAIL
+    password = SMTP_PASSWORD
+    if not remitente or not password:
+        print("Error: SMTP_EMAIL o SMTP_PASSWORD no configurados. No se enviará el correo de restablecimiento.")
+        return False
+
     msg = MIMEText(f"Para restablecer tu contraseña haz clic en el siguiente enlace:\n{link}")
     msg['Subject'] = "Restablece tu contraseña"
     msg['From'] = remitente
@@ -1318,6 +1523,7 @@ def send_reset_email(email, link):
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
         server.login(remitente, password)
         server.sendmail(remitente, [email], msg.as_string())
+    return True
 
 @app.route('/check_email', methods=['POST'])
 def check_email():
