@@ -360,7 +360,8 @@ def detener_voz():
             def _upd():
                 try:
                     if 'bubble_stop_btn' in globals() and bubble_stop_btn:
-                        bubble_stop_btn.config(bg=current_theme["STOP_COLOR"])
+                        # usar el helper para actualizar el canvas/icono
+                        set_bubble_stop_color(current_theme["STOP_COLOR"])
                 except Exception:
                     pass
             ventana.after(0, _upd)
@@ -384,7 +385,7 @@ def hablar_por_frases(texto: str):
             def _upd():
                 try:
                     if 'bubble_stop_btn' in globals() and bubble_stop_btn:
-                        bubble_stop_btn.config(bg='#27ae60')
+                        set_bubble_stop_color('#27ae60')
                 except Exception:
                     pass
             ventana.after(0, _upd)
@@ -432,7 +433,7 @@ def hablar_por_frases(texto: str):
             def _upd2():
                 try:
                     if 'bubble_stop_btn' in globals() and bubble_stop_btn:
-                        bubble_stop_btn.config(bg=current_theme["STOP_COLOR"])
+                        set_bubble_stop_color(current_theme["STOP_COLOR"])
                 except Exception:
                     pass
             ventana.after(0, _upd2)
@@ -487,6 +488,46 @@ def hablar_y_guardar(texto: str):
             insert_chat(uid, "alira", texto)
         except Exception as e:
             print("Error guardando chat (alira):", e)
+
+
+# Helper para actualizar el color del botón de stop/estado de forma segura desde cualquier hilo
+def set_bubble_stop_color(color):
+    """Pinta el círculo del botón de estado (verde/rojo) y dibuja un icono encima.
+    Funciona si `bubble_stop_btn` es un Canvas o un widget con `config(bg=...)`.
+    """
+    global bubble_stop_btn
+    try:
+        if bubble_stop_btn and isinstance(bubble_stop_btn, tk.Canvas):
+            c = bubble_stop_btn
+            try:
+                # limpiar y dibujar círculo
+                c.delete("all")
+                padding = 2
+                # obtener tamaño (fallback a 24)
+                try:
+                    w = int(c['width'])
+                    h = int(c['height'])
+                except Exception:
+                    try:
+                        w = c.winfo_width() or 24
+                        h = c.winfo_height() or 24
+                    except Exception:
+                        w, h = 24, 24
+                c.create_oval(padding, padding, w - padding, h - padding, fill=color, outline=color, tags="circle")
+                # icono moderno (microfono). Si falla por fuente, se ignora.
+                try:
+                    c.create_text(w//2, h//2, text='🎤', fill='white', font=('Segoe UI', max(8, min(14, w//2))))
+                except Exception:
+                    pass
+            except Exception:
+                pass
+        elif bubble_stop_btn:
+            try:
+                bubble_stop_btn.config(bg=color)
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 # ===================== FUNCIÓN DE ESCUCHA (RECONOCIMIENTO DE VOZ) =====================
 def escuchar_loop():
@@ -600,7 +641,7 @@ def escuchar_loop():
 def crear_ventana():
     """Crea la ventana flotante tipo chat para mostrar y escribir mensajes"""
     global ventana, canvas, frames_saludo, duraciones_saludo, frames_permanente, duraciones_permanente
-    global bubble_window, bubble_text, bubble_entry, escuchar_thread, icono
+    global bubble_win, bubble_text, bubble_entry, escuchar_thread, icono
 
 
     # Forzar reinicio de variables globales para evitar estados inconsistentes
@@ -993,7 +1034,8 @@ def create_bubble_window():
         try:
             if 'bubble_stop_btn' in globals() and bubble_stop_btn:
                 color = '#27ae60' if hablar_estado_get() else current_theme["STOP_COLOR"]
-                bubble_stop_btn.config(bg=color)
+                # usar helper para compatibilidad con Canvas
+                set_bubble_stop_color(color)
         except Exception:
             pass
 
@@ -1048,10 +1090,13 @@ def show_bubble_with_text(text, animate=True):
                     bubble_entry.focus_force()
                 except Exception:
                     pass
+            # No usar grab_set aquí: capturar eventos globalmente provoca que
+            # la ventana principal (ventana con el GIF) deje de recibir
+            # eventos del ratón, impidiendo arrastrarla. En su lugar solo
+            # forzamos foco para que el Entry reciba teclado.
             try:
-                # Capturar eventos en la burbuja para asegurar que reciba teclado
                 if bubble_win:
-                    bubble_win.grab_set()
+                    bubble_win.focus_force()
             except Exception:
                 pass
         except Exception:
@@ -1188,9 +1233,10 @@ def limpiar_texto(widget):
         print("Error en limpiar_texto:", e)
 
 def agregar_mensaje(texto):
-    global bubble_text, bubble_window
+    global bubble_text, bubble_win
     try:
-        if not (bubble_window and bubble_window.winfo_exists()):
+        # Usar bubble_win (nombre unificado). Si no existe, crear la ventana.
+        if not (bubble_win and bubble_win.winfo_exists()):
             create_bubble_window()
     except Exception:
         pass
