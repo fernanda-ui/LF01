@@ -21,7 +21,7 @@ git push -u origin main --force
 Cada vez que hagas cambios:
 
 git add .
-git commit -m "Se movieron las variables de entornos al .env"
+git commit -m "Se movieron las variables de entornos al .env prt-2"
 git push
 
 
