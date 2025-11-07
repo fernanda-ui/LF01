@@ -246,7 +246,9 @@ def escuchar():
                     print("Error guardando chat (usuario):", e)
 
             # === Comandos posibles ===
-            if "estoy cansado" in comando:
+            if "hola" in comando:
+                hablar("Hola, ¿cómo estás? ¿En qué puedo ayudarte hoy?")
+            elif "estoy cansado" in comando:
                 hablar("Puedo ayudarte a organizar tu jornada con más calma.")
             elif "youtube" in comando:
                 hablar("Abriendo YouTube")
