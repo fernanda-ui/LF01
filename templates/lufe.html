@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LF-01</title>
+  <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="/static/css/style.css">  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">  
 </head>
@@ -20,15 +21,7 @@
         
         <div class="spacer"></div>
 
-        <!-- botón de tema (ya existía) -->
-        <button id="themeToggle" class="icon-btn" title="Cambiar tema" aria-label="Cambiar tema">
-          <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-            <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zm10.45 0l1.79-1.8 1.41 1.41-1.8 1.79-1.4-1.4zM12 4V1h-0v3h0zm0 19v-3h0v3h0zM4 12H1v0h3v0zm19 0h-3v0h3v0zM6.76 19.16l-1.42 1.42-1.79-1.8 1.41-1.41 1.8 1.79zm12.02-1.79l1.41 1.41-1.79 1.8-1.42-1.42 1.8-1.79zM12 7a5 5 0 100 10 5 5 0 000-10z"/>
-          </svg>
-          <svg id="moonIcon" class="hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-            <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
-          </svg>
-        </button>
+        <!-- (Eliminado) botón de tema -->
 
         <!-- NUEVO: botón para ocultar/mostrar sidebar (junto al theme toggle) -->
         <button id="toggleSidebarBtn" class="toggle-sidebar-btn" title="Ocultar/mostrar chats" aria-label="Ocultar/mostrar chats">
@@ -38,9 +31,9 @@
 
    <!-- 🔹 Sección superior del historial -->
 <div class="sidebar-top">
-  <button class="sidebar-btn">
-    <i class="fa-solid fa-table-columns"></i>
-    <span>Panel</span>
+  <button class="sidebar-btn" id="openReminderPanel">
+    <i class="fa-solid fa-clock"></i>
+    <span>Recordatorios</span>
   </button>
   <button class="sidebar-btn">
     <i class="fa-solid fa-pen-to-square"></i>
@@ -98,18 +91,9 @@
       </a>
     </li>
     <li>
-      <a href="#">
+      <a href="#" id="openSettings">
         <i data-lucide="settings" class="icon"></i>
         Configuración
-      </a>
-    </li>
-
-    <hr>
-
-    <li>
-      <a href="#">
-        <i data-lucide="help-circle" class="icon"></i>
-        Ayuda
       </a>
     </li>
     <li>
@@ -131,7 +115,14 @@
           <div class="title" id="chatTitle">Chat de hoy</div>
           <div class="sub">Lo que hablas con Iris y lo que ella responde por voz</div>
         </div>
-        <span class="pill" id="statusPill">En vivo</span>
+        <!-- Icono notificaciones -->
+        <button id="notifBell" class="pill bell-btn" title="Notificaciones" aria-label="Notificaciones">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          <span id="dueBadge" class="badge hidden"></span>
+        </button>
       </header>
 
       <section id="chatArea" class="chat-area" aria-live="polite">
@@ -145,7 +136,38 @@
   <button id="attachBtnWeb" class="attach-btn" title="Adjuntar archivo">+</button>
   <input type="text" id="chatInputWeb" placeholder="Escribe un mensaje..." />
   <button id="sendBtnWeb" class="send-btn" title="Enviar">→</button>
+  <button id="voiceStopBtn" class="voice-indicator hidden" title="Detener voz" aria-label="Detener voz">
+    <span class="square"></span>
+  </button>
 </div>
+
+ <!-- Modal Recordatorios -->
+ <div id="reminderModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="reminderTitle">
+   <div class="modal-content">
+     <div class="modal-header">
+       <h2 id="reminderTitle">Recordatorios</h2>
+       <button id="closeReminderModal" class="close-btn" aria-label="Cerrar">×</button>
+     </div>
+      <div class="modal-body">
+       <form id="reminderForm" class="reminder-form">
+         <label>Hora
+           <input type="time" id="reminderTime" required />
+         </label>
+         <label>Mensaje
+           <input type="text" id="reminderText" placeholder="Ej: realizar el examen" required />
+         </label>
+         <button type="submit" class="primary-btn">Guardar recordatorio</button>
+       </form>
+       <hr />
+        <div class="reminder-list-wrapper" id="remindersScrollArea">
+          <h3>Pendientes</h3>
+          <ul id="reminderListPending" class="reminder-list" aria-live="polite"></ul>
+          <h3>Notificados</h3>
+          <ul id="reminderListNotified" class="reminder-list" aria-live="polite"></ul>
+        </div>
+     </div>
+   </div>
+ </div>
     </main>
   </div>
 
@@ -170,11 +192,147 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    lucide.createIcons(); // Inicializa todos los íconos
+    lucide.createIcons();
   });
+  // Nota: control de tema se gestiona desde el modal de Configuración.
 </script>
 
 
+<!-- Modal Notificaciones (independiente del de Recordatorios) -->
+<div id="notificationsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="notificationsTitle">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="notificationsTitle">Notificaciones</h2>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button id="markAllRead" class="secondary-btn" title="Marcar todas como leídas">Marcar leídas</button>
+        <button id="closeNotificationsModal" class="close-btn" aria-label="Cerrar">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <ul id="notificationsList" class="reminder-list" aria-live="polite"></ul>
+    </div>
+  </div>
+  </div>
+
 <script src="/static/js/script.js"></script>
+
+<!-- ================= MODAL CONFIGURACIÓN ================= -->
+<div class="settings-backdrop" id="settingsBackdrop" hidden></div>
+<div class="settings-modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+  <div class="settings-dialog">
+    <div class="settings-header">
+      <h2 id="settingsTitle">Configuración</h2>
+      <button class="close-settings-btn" id="closeSettingsBtn" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="settings-body">
+      <nav class="settings-nav" aria-label="Secciones de configuración">
+        <button class="settings-tab active" data-section="general">General</button>
+        <button class="settings-tab" data-section="notificaciones">Notificaciones</button>
+        <button class="settings-tab" data-section="personalizacion">Personalización</button>
+        <button class="settings-tab" data-section="seguridad">Seguridad</button>
+        <button class="settings-tab" data-section="cuenta">Cuenta</button>
+      </nav>
+      <div class="settings-content">
+        <!-- Sección General -->
+        <section class="settings-section active" data-section="general">
+          <ul class="settings-list">
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Actualizaciones de la aplicación</span>
+                <span class="item-desc">Versión actual: <span id="appVersion">1.0.0</span></span>
+              </div>
+              <button class="btn-outline" id="checkUpdatesBtn">Comprobar</button>
+            </li>
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Ejecutar en el inicio de sesión</span>
+                <span class="item-desc">Mantener Iris lista al iniciar</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="autoStartToggle">
+                <span class="slider"></span>
+              </label>
+            </li>
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Tecla de acceso directo</span>
+                <span class="item-desc">Abrir ventana flotante</span>
+              </div>
+              <div class="shortcut-box" id="shortcutDisplay">Alt + SPACE</div>
+            </li>
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Aspecto</span>
+                <span class="item-desc">Elige tema visual</span>
+              </div>
+              <div class="select-box">
+                <select id="themeSelect" aria-label="Seleccionar tema">
+                  <option value="system">Sistema</option>
+                  <option value="light">Claro</option>
+                  <option value="dark">Oscuro</option>
+                </select>
+              </div>
+            </li>
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Color de acento</span>
+                <span class="item-desc">Resalta controles principales</span>
+              </div>
+              <div class="accent-grid" id="accentGrid">
+                <button data-accent="#ef4444" style="--accent-preview:#ef4444" aria-label="Rojo" class="accent-option active"></button>
+                <button data-accent="#6366f1" style="--accent-preview:#6366f1" aria-label="Indigo" class="accent-option"></button>
+                <button data-accent="#10b981" style="--accent-preview:#10b981" aria-label="Verde" class="accent-option"></button>
+                <button data-accent="#f59e0b" style="--accent-preview:#f59e0b" aria-label="Amarillo" class="accent-option"></button>
+                <button data-accent="#ec4899" style="--accent-preview:#ec4899" aria-label="Rosa" class="accent-option"></button>
+              </div>
+            </li>
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Tamaño del texto</span>
+                <span class="item-desc">Ajusta legibilidad</span>
+              </div>
+              <div class="text-size-controls">
+                <button class="icon-btn" id="decreaseTextBtn" aria-label="Reducir tamaño">−</button>
+                <div id="textSizeDisplay">100%</div>
+                <button class="icon-btn" id="increaseTextBtn" aria-label="Aumentar tamaño">+</button>
+                <button class="btn-reset" id="resetTextBtn">Restablecer</button>
+              </div>
+            </li>
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Idioma</span>
+                <span class="item-desc">Interfaz principal</span>
+              </div>
+              <div class="select-box">
+                <select id="langSelect">
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </li>
+            <li class="setting-item">
+              <div>
+                <span class="item-title">Idioma hablado</span>
+                <span class="item-desc">Para síntesis y reconocimiento</span>
+              </div>
+              <div class="select-box">
+                <select id="speechLangSelect">
+                  <option value="es-ES">Español (ES)</option>
+                  <option value="en-US">English (US)</option>
+                </select>
+              </div>
+            </li>
+          </ul>
+        </section>
+        <!-- Placeholder otras secciones -->
+        <section class="settings-section" data-section="notificaciones"><p class="placeholder">(Configurar notificaciones próximamente)</p></section>
+        <section class="settings-section" data-section="personalizacion"><p class="placeholder">(Más opciones de personalización próximamente)</p></section>
+        <section class="settings-section" data-section="seguridad"><p class="placeholder">(Opciones de seguridad en construcción)</p></section>
+        <section class="settings-section" data-section="cuenta"><p class="placeholder">(Gestión de cuenta en desarrollo)</p></section>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

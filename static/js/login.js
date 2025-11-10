@@ -247,6 +247,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernameInput = document.getElementById("login_username");
   const passwordInput = document.getElementById("login_password");
   const rememberCheckbox = document.getElementById("rememberMe");
+  const loader = document.getElementById('globalLoader');
 
   // Evitar error si no existe (por seguridad)
   if (!usernameInput || !passwordInput || !rememberCheckbox) return;
@@ -272,6 +273,17 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem("savedUsername");
         localStorage.removeItem("savedPassword");
       }
+      // Mostrar overlay inmediatamente
+      if (loader) loader.classList.add('show');
+    });
+
+    // También si el usuario presiona Enter en los campos
+    [usernameInput, passwordInput].forEach(el => {
+      el.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter') {
+          if (loader) loader.classList.add('show');
+        }
+      });
     });
   }
 

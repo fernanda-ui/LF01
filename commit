@@ -21,7 +21,15 @@ git push -u origin main --force
 Cada vez que hagas cambios:
 
 git add .
-git commit -m "Se movieron las variables de entornos al .env"
+git commit -m "feat: overlay de carga en login y separación de notificaciones/recordatorios
+
+- Añadido loader animado (doble aro rojo + punto pulsante) al enviar login
+- Separados modales de Notificaciones y Recordatorios
+- Sistema de notificaciones al vencer recordatorios
+- Recordatorios divididos en Pendientes/Notificados con scroll
+- Chat del día actual se crea/muestra automáticamente al login
+- Color de acento por usuario (localStorage con namespace)
+- Mejoras en captura por voz de recordatorios"
 git push
 
 

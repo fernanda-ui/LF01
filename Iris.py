@@ -301,6 +301,224 @@ def fetch_chats_for_user(user_id):
         })
     return result
 
+# ===================== RECORDATORIOS =====================
+def ensure_reminders_table():
+        """Crea la tabla reminders en SQL Server si no existe."""
+        con = get_connection()
+        cur = con.cursor()
+        cur.execute(
+                """
+                IF NOT EXISTS (
+                    SELECT * FROM sys.objects 
+                    WHERE object_id = OBJECT_ID(N'[dbo].[reminders]') AND type = N'U'
+                )
+                BEGIN
+                    CREATE TABLE [dbo].[reminders] (
+                        [id] INT IDENTITY(1,1) PRIMARY KEY,
+                        [user_id] INT NOT NULL,
+                        [message] NVARCHAR(400) NOT NULL,
+                        [due_at] DATETIME2(0) NOT NULL,
+                        [notified] BIT NOT NULL CONSTRAINT DF_reminders_notified DEFAULT (0),
+                        [spoken]   BIT NOT NULL CONSTRAINT DF_reminders_spoken   DEFAULT (0),
+                        [created_at] DATETIME2(0) NOT NULL CONSTRAINT DF_reminders_created DEFAULT (SYSUTCDATETIME())
+                    );
+                END
+                """
+        )
+        con.commit()
+        con.close()
+
+ensure_reminders_table()
+
+def ensure_notifications_table():
+    """Crea la tabla notifications en SQL Server si no existe (para mostrar en modal independiente)."""
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute(
+        """
+        IF NOT EXISTS (
+            SELECT * FROM sys.objects 
+            WHERE object_id = OBJECT_ID(N'[dbo].[notifications]') AND type = N'U'
+        )
+        BEGIN
+            CREATE TABLE [dbo].[notifications] (
+                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                [user_id] INT NOT NULL,
+                [title] NVARCHAR(200) NOT NULL,
+                [body] NVARCHAR(800) NOT NULL,
+                [created_at] DATETIME2(0) NOT NULL CONSTRAINT DF_notifications_created DEFAULT (SYSUTCDATETIME()),
+                [is_read] BIT NOT NULL CONSTRAINT DF_notifications_is_read DEFAULT(0)
+            );
+        END
+        """
+    )
+    con.commit()
+    con.close()
+
+ensure_notifications_table()
+
+def insert_reminder(user_id:int, message:str, due_at):
+    """Inserta recordatorio. due_at: datetime.datetime (recomendado)."""
+    con = get_connection()
+    cur = con.cursor()
+    # Asegurar tipo datetime para SQL Server
+    if isinstance(due_at, str):
+        try:
+            # Intentar parseo ISO
+            due_at = datetime.datetime.fromisoformat(due_at)
+        except Exception:
+            pass
+    # Usar OUTPUT INSERTED.id para obtener el id en SQL Server
+    cur.execute(
+        "INSERT INTO reminders (user_id, message, due_at) OUTPUT INSERTED.id VALUES (?,?,?)",
+        (user_id, message, due_at)
+    )
+    row = cur.fetchone()
+    rid = row[0] if row else None
+    con.commit()
+    con.close()
+    return rid
+
+def fetch_reminders(user_id:int):
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT id, message, due_at, notified, spoken FROM reminders WHERE user_id=? ORDER BY due_at", (user_id,))
+    rows = cur.fetchall()
+    con.close()
+    out=[]
+    for r in rows:
+        # status derivado
+        status = 'pendiente'
+        if r[3]:
+            status = 'notificado'
+        due_val = r[2]
+        try:
+            # formatear legible HH:MM
+            if hasattr(due_val, 'strftime'):
+                due_str = due_val.strftime('%Y-%m-%d %H:%M')
+            else:
+                due_str = str(due_val)
+        except Exception:
+            due_str = str(due_val)
+        out.append({"id":r[0],"message":r[1],"due_at":due_str,"status":status})
+    return out
+
+def delete_reminder(user_id:int, rid:int):
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("DELETE FROM reminders WHERE id=? AND user_id=?", (rid, user_id))
+    con.commit()
+    con.close()
+
+import datetime
+import time
+
+def fetch_due_reminders():
+    """Recordatorios vencidos sin notificar."""
+    now = datetime.datetime.now()
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT id, user_id, message, due_at FROM reminders WHERE due_at <= ? AND notified=0", (now,))
+    rows = cur.fetchall()
+    con.close()
+    return rows
+
+def mark_reminder_notified(rid:int, spoken:int=0):
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("UPDATE reminders SET notified=1, spoken=? WHERE id=?", (spoken, rid))
+    con.commit()
+    con.close()
+
+def insert_notification(user_id:int, title:str, body:str):
+    """Inserta una notificación genérica (se mostrará en el modal de notificaciones)."""
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("INSERT INTO notifications (user_id, title, body) VALUES (?,?,?)", (user_id, title, body))
+    con.commit()
+    con.close()
+
+def fetch_notifications(user_id:int):
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("SELECT id, title, body, created_at, is_read FROM notifications WHERE user_id=? ORDER BY created_at DESC", (user_id,))
+    rows = cur.fetchall()
+    con.close()
+    out=[]
+    for r in rows:
+        created = r[3]
+        try:
+            created_str = created.strftime('%Y-%m-%d %H:%M') if hasattr(created,'strftime') else str(created)
+        except Exception:
+            created_str = str(created)
+        out.append({'id':r[0],'title':r[1],'body':r[2],'created_at':created_str,'is_read': bool(r[4])})
+    return out
+
+def mark_all_notifications_read(user_id:int):
+    con = get_connection()
+    cur = con.cursor()
+    cur.execute("UPDATE notifications SET is_read=1 WHERE user_id=? AND is_read=0", (user_id,))
+    con.commit()
+    con.close()
+
+reminder_thread_started = False
+def start_reminder_thread():
+    global reminder_thread_started
+    if reminder_thread_started:
+        return
+    reminder_thread_started = True
+    def loop():
+        while True:
+            try:
+                due = fetch_due_reminders()
+                for rid, uid, msg, due_at in due:
+                    # Voz y marca
+                    try:
+                        hora_txt = due_at.strftime('%H:%M') if hasattr(due_at, 'strftime') else str(due_at)
+                        hablar_solo_voz(f"Ya son las {hora_txt}: te recuerdo {msg}")
+                    except Exception as e:
+                        print('Error TTS recordatorio:', e)
+                    mark_reminder_notified(rid, spoken=1)
+                    # Insertar notificación visible en la campana
+                    try:
+                        insert_notification(uid, 'Recordatorio vencido', f"{msg} (hora {hora_txt})")
+                    except Exception as e:
+                        print('Error insert_notification:', e)
+                time.sleep(5)
+            except Exception as e:
+                print('Error loop recordatorios:', e)
+                time.sleep(5)
+    threading.Thread(target=loop, daemon=True).start()
+
+# Nota: el hilo de recordatorios se iniciará más abajo, solo en el proceso principal para evitar duplicados
+
+def parse_reminder_command(texto:str):
+    """Detecta comandos tipo 'recuerdame a las 11:30 pm hacer X'. Devuelve (due_at_iso, mensaje) o None."""
+    import re, datetime
+    t = texto.lower().strip()
+    # patron hora exacta
+    m = re.match(r'recu[eé]rdame\s+a\s+las\s+(\d{1,2}:\d{2})\s*(am|pm)?\s*(.*)', t)
+    if m:
+        hora = m.group(1)
+        suf = m.group(2)
+        resto = m.group(3).strip()
+        if not resto:
+            resto = 'la tarea'
+        h, mi = hora.split(':')
+        h = int(h)
+        if suf == 'pm' and h != 12:
+            h += 12
+        if suf == 'am' and h == 12:
+            h = 0
+        now = datetime.datetime.now()
+        due = now.replace(hour=h, minute=int(mi), second=0, microsecond=0)
+        if due < now:
+            # si ya pasó hoy, mañana
+            due = due + datetime.timedelta(days=1)
+        return due, resto
+    return None
+
+
 # ===================== UTILIDADES TTS (gTTS + pygame) =====================
 def limpiar_texto_para_voz(texto: str) -> str:
     """Elimina símbolos innecesarios para la voz."""
@@ -441,13 +659,25 @@ def hablar_por_frases(texto: str):
 
 
 # ===================== INTEGRACIÓN CON GEMINI =====================
-def obtener_respuesta_ia(prompt: str) -> str:
-    """Usa Gemini para generar la respuesta en texto."""
+def obtener_respuesta_ia(prompt: str, contexto: str = "") -> str:
+    """Usa Gemini para generar la respuesta en texto, priorizando brevedad y concisión, y siguiendo el hilo del chat."""
     try:
         modelo = genai.GenerativeModel("gemini-2.0-flash")
-        respuesta = modelo.generate_content(prompt)
-        # respuesta.text es la propiedad de texto devuelta
-        return respuesta.text if hasattr(respuesta, "text") else str(respuesta)
+        prompt_breve = (
+            f"Contexto de la conversación (usa solo para entender referencias, no repitas nombres ni prefijos):\n{contexto}\n"
+            "Reglas: No antepongas 'Iris:' ni 'Asistente:' ni firmes tu respuesta."
+            " Responde al usuario en 1-3 frases, directo y simple. Si el usuario pide 'profundiza' o 'más detalles', entonces sí amplía. "
+            f"Pregunta del usuario: {prompt}"
+        )
+        respuesta = modelo.generate_content(prompt_breve)
+        texto = respuesta.text if hasattr(respuesta, "text") else str(respuesta)
+        # Limpieza por si el modelo aún devuelve prefijos tipo "Iris:" o "Asistente:" al inicio de línea
+        try:
+            import re
+            texto = re.sub(r"(?mi)^\s*(iris|asistente)\s*[:\-–—]\s*", "", texto)
+        except Exception:
+            pass
+        return texto
     except Exception as e:
         print("Error al conectar con Gemini:", e)
         return "⚠️ No pude conectar con la IA. Revisa la API key o tu conexión."
@@ -488,6 +718,10 @@ def hablar_y_guardar(texto: str):
         except Exception as e:
             print("Error guardando chat (alira):", e)
 
+def hablar_solo_voz(texto: str):
+    """Habla por voz SIN guardar en BD ni historial. Para comandos de sistema/apps."""
+    threading.Thread(target=hablar_por_frases, args=(texto,), daemon=True).start()
+
 # ===================== FUNCIÓN DE ESCUCHA (RECONOCIMIENTO DE VOZ) =====================
 def escuchar_loop():
     """Loop continuo de escucha que procesa comandos de voz y envía a IA cuando aplica."""
@@ -499,7 +733,7 @@ def escuchar_loop():
         with mic as source:
             try:
                 print("🎧 Escuchando...")
-                audio = r.listen(source, timeout=5, phrase_time_limit=7)
+                audio = r.listen(source, timeout=5, phrase_time_limit=10)
             except Exception:
                 continue
         try:
@@ -511,69 +745,104 @@ def escuchar_loop():
 
             # === COMANDOS DE APPS (NO se registran en chat) ===
             if "youtube" in comando:
-                hablar_y_guardar("Abriendo YouTube")
+                hablar_solo_voz("Abriendo YouTube")
                 webbrowser.open("https://www.youtube.com")
             elif "google" in comando and "busca" not in comando:
-                hablar_y_guardar("Abriendo Google")
+                hablar_solo_voz("Abriendo Google")
                 webbrowser.open("https://www.google.com")
             elif "netflix" in comando:
-                hablar_y_guardar("Abriendo Netflix")
+                hablar_solo_voz("Abriendo Netflix")
                 webbrowser.open("https://www.netflix.com")
             elif "explorador" in comando or "archivos" in comando:
-                hablar_y_guardar("Abriendo explorador de archivos")
+                hablar_solo_voz("Abriendo explorador de archivos")
                 os.startfile("explorer")
             elif "configuración" in comando or "configuracion" in comando:
-                hablar_y_guardar("Abriendo configuración")
+                hablar_solo_voz("Abriendo configuración")
                 subprocess.run("start ms-settings:", shell=True)
             elif "word" in comando:
-                hablar_y_guardar("Abriendo Word")
+                hablar_solo_voz("Abriendo Word")
                 try:
                     os.startfile("winword")
                 except Exception:
-                    hablar_y_guardar("Word no está instalado. Abriendo Word online.")
+                    hablar_solo_voz("Word no está instalado. Abriendo Word online.")
                     webbrowser.open("https://office.live.com/start/Word.aspx")
             elif "excel" in comando:
-                hablar_y_guardar("Abriendo Excel")
+                hablar_solo_voz("Abriendo Excel")
                 try:
                     os.startfile("excel")
                 except Exception:
-                    hablar_y_guardar("Excel no está instalado. Abriendo Excel online.")
+                    hablar_solo_voz("Excel no está instalado. Abriendo Excel online.")
                     webbrowser.open("https://office.live.com/start/Excel.aspx")
             elif "powerpoint" in comando:
-                hablar_y_guardar("Abriendo PowerPoint")
+                hablar_solo_voz("Abriendo PowerPoint")
                 try:
                     os.startfile("powerpnt")
                 except Exception:
-                    hablar_y_guardar("PowerPoint no está instalado. Abriendo PowerPoint online.")
+                    hablar_solo_voz("PowerPoint no está instalado. Abriendo PowerPoint online.")
                     webbrowser.open("https://office.live.com/start/PowerPoint.aspx")
             elif "visual studio" in comando or "visual studio code" in comando or "vscode" in comando:
-                hablar_y_guardar("Abriendo Visual Studio Code")
+                hablar_solo_voz("Abriendo Visual Studio Code")
                 try:
                     os.startfile("code")
                 except Exception:
-                    hablar_y_guardar("No se encontró Visual Studio Code. Abriendo VS Code web.")
+                    hablar_solo_voz("No se encontró Visual Studio Code. Abriendo VS Code web.")
                     webbrowser.open("https://vscode.dev")
             elif "zoom" in comando:
-                hablar_y_guardar("Abriendo Zoom")
+                hablar_solo_voz("Abriendo Zoom")
                 try:
                     os.startfile("zoom")
                 except Exception:
-                    hablar_y_guardar("Zoom no está instalado. Abriendo Zoom web.")
+                    hablar_solo_voz("Zoom no está instalado. Abriendo Zoom web.")
                     webbrowser.open("https://zoom.us/signin")
             elif "chat gpt" in comando:
-                hablar_y_guardar("Abriendo ChatGPT")
+                hablar_solo_voz("Abriendo ChatGPT")
                 webbrowser.open("https://chat.openai.com")
             elif "busca en google" in comando or "búscame en google" in comando or "buscame en google" in comando:
                 consulta = comando
                 consulta = consulta.replace("busca en google", "").replace("búscame en google", "").replace("buscame en google", "").strip()
                 if consulta:
-                    hablar_y_guardar(f"Buscando en google: {consulta}")
+                    hablar_solo_voz(f"Buscando en google: {consulta}")
                     url_busqueda = f"https://www.google.com/search?q={consulta.replace(' ', '+')}"
                     webbrowser.open(url_busqueda)
                 else:
-                    hablar_y_guardar("¿Qué quieres que busque en Google?")
+                    hablar_solo_voz("¿Qué quieres que busque en Google?")
             elif PALABRA_FINAL in comando:
-                hablar_y_guardar("Gracias a ti")
+                hablar_solo_voz("Gracias a ti")
+            # === Recordatorios por voz ===
+            elif comando.startswith("recuerdame") or comando.startswith("recuérdame"):
+                parsed = parse_reminder_command(comando)
+                if parsed:
+                    due_at, msg_rec = parsed
+                    # Si no dijo mensaje o quedó muy corto (por límite de tiempo), pedirlo
+                    if not msg_rec or msg_rec.strip() == '' or msg_rec.strip().lower() in ("la tarea", "tarea"):
+                        try:
+                            hablar_solo_voz("¿Qué debo recordarte?")
+                            with mic as s2:
+                                audio2 = r.listen(s2, timeout=5, phrase_time_limit=6)
+                            try:
+                                msg_rec2 = r.recognize_google(audio2, language="es-ES").strip()
+                            except Exception:
+                                msg_rec2 = ''
+                            if msg_rec2:
+                                msg_rec = msg_rec2
+                        except Exception:
+                            pass
+                    with current_user_id_lock:
+                        uid = current_user_id
+                    if uid:
+                        rid = insert_reminder(uid, msg_rec, due_at)
+                        hora_txt = due_at.strftime('%H:%M')
+                        hablar_solo_voz(f"Recordatorio creado para las {hora_txt}: {msg_rec}")
+                        try:
+                            insert_chat(uid, "alira", f"Recordatorio guardado para las {hora_txt}: {msg_rec}")
+                        except Exception:
+                            pass
+                    else:
+                        hablar_solo_voz("No hay usuario activo para guardar el recordatorio")
+                    continue
+                else:
+                    hablar_solo_voz("Formato inválido. Di por ejemplo: recuerdame a las 10:45 pm enviar el informe")
+                    continue
             else:
                 # === Comandos que SÍ se registran en chat ===
                 with current_user_id_lock:
@@ -1019,10 +1288,27 @@ def create_bubble_window():
     bubble_visible = True
     try:
         # Forzar foco en la burbuja y en el entry recién creada
+        # Liberar grab para evitar bloqueos de input
+        try:
+            bubble_win.grab_release()
+        except Exception:
+            pass
         if bubble_win:
+            # Toggle topmost para refrescar foco
+            try:
+                bubble_win.attributes('-topmost', False)
+                bubble_win.attributes('-topmost', True)
+            except Exception:
+                pass
             bubble_win.focus_force()
         if bubble_entry:
+            bubble_entry.configure(state=tk.NORMAL)
             bubble_entry.focus_set()
+            try:
+                bubble_entry.focus_force()
+                bubble_entry.icursor(tk.END)
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -1041,19 +1327,30 @@ def show_bubble_with_text(text, animate=True):
         try:
             # Asegurar que la burbuja y su entry reciban el foco para poder escribir
             if bubble_win:
+                try:
+                    bubble_win.grab_release()  # Evitar bloqueos de teclado en ventanas sin borde
+                except Exception:
+                    pass
+                # Dar foco a la ventana
+                try:
+                    bubble_win.attributes('-topmost', False)
+                    bubble_win.attributes('-topmost', True)
+                except Exception:
+                    pass
                 bubble_win.focus_force()
             if bubble_entry:
+                # Asegurar que el entry esté habilitado
+                try:
+                    bubble_entry.configure(state=tk.NORMAL)
+                except Exception:
+                    pass
+                # Forzar foco múltiples veces para ventanas sin borde
                 bubble_entry.focus_set()
                 try:
                     bubble_entry.focus_force()
+                    bubble_entry.icursor(tk.END)
                 except Exception:
                     pass
-            try:
-                # Capturar eventos en la burbuja para asegurar que reciba teclado
-                if bubble_win:
-                    bubble_win.grab_set()
-            except Exception:
-                pass
         except Exception:
             pass
     except Exception:
@@ -1141,6 +1438,9 @@ def bubble_send():
 
             # Mostrar el mensaje del usuario
             agregar_mensaje(f"Tú: {prompt}")
+            # 🔹 INSERTAR el mensaje del usuario en la BD (sincronización con chat web)
+            insert_chat(user_id, "usuario", prompt)
+
 
             # Enviar mensaje al backend
             import requests
@@ -1148,7 +1448,8 @@ def bubble_send():
 
             if resp.status_code == 200:
                 data = resp.json()
-                respuesta = data.get("bot_response", "Error: sin respuesta")
+                # Alinear con la respuesta del endpoint /send_message
+                respuesta = data.get("ia_message") or data.get("bot_response") or "Error: sin respuesta"
                 hablar_y_guardar_con_bubble_threadsafe(respuesta)
             else:
                 agregar_mensaje("⚠️ Error al conectar con el servidor")
@@ -1188,9 +1489,9 @@ def limpiar_texto(widget):
         print("Error en limpiar_texto:", e)
 
 def agregar_mensaje(texto):
-    global bubble_text, bubble_window
+    global bubble_text, bubble_win
     try:
-        if not (bubble_window and bubble_window.winfo_exists()):
+        if not (bubble_win and bubble_win.winfo_exists()):
             create_bubble_window()
     except Exception:
         pass
@@ -1589,6 +1890,7 @@ def send_message():
     Endpoint que el frontend puede usar para enviar un mensaje escrito desde la web.
     Guarda en BD y dispara la IA + TTS para que la ventana flotante responda por voz.
     Body JSON: { "message": "texto" }
+    Ahora incluye el historial del chat actual como contexto para mantener el hilo.
     """
     if "user_id" not in session:
         return jsonify({"error": "No autorizado"}), 401
@@ -1600,24 +1902,60 @@ def send_message():
 
     user_id = session["user_id"]
 
+    # Interceptar comando de recordatorio
+    try:
+        parsed = parse_reminder_command(mensaje)
+        if parsed:
+            due_at, msg_rec = parsed
+            rid = insert_reminder(user_id, msg_rec, due_at)
+            hora_txt = due_at.strftime('%H:%M')
+            confirm = f"Recordatorio guardado para las {hora_txt}: {msg_rec}"
+            # Opcional: guardar confirmación en chat
+            try:
+                insert_chat(user_id, "alira", confirm)
+            except Exception:
+                pass
+            return jsonify({"ok": True, "user_message": mensaje, "ia_message": confirm, "speaking": False, "reminder_id": rid})
+    except Exception as e:
+        print('Error parse reminder:', e)
+
     try:
         # Guardar mensaje del usuario
         insert_chat(user_id, "usuario", mensaje)
     except Exception as e:
         print("Error guardando mensaje web:", e)
 
-    # Generar respuesta IA (sin bloquear el frontend)
+    # Obtener historial del chat actual (solo últimos 8 mensajes para contexto)
     try:
-        respuesta = obtener_respuesta_ia(mensaje)
+        historial = fetch_chats_for_user(user_id)[-8:]
+        contexto = ""
+        for m in historial:
+            if m["tipo"] == "usuario":
+                contexto += f"Usuario: {m['mensaje']}\n"
+            else:
+                # Usa 'Asistente' para no reforzar el prefijo 'Iris:' en las respuestas
+                contexto += f"Asistente: {m['mensaje']}\n"
+    except Exception as e:
+        print("Error obteniendo historial para contexto IA:", e)
+        contexto = ""
 
-        # Guardar respuesta y reproducirla (esta función también guarda en BD)
+    # Generar respuesta IA con contexto
+    try:
+        respuesta = obtener_respuesta_ia(mensaje, contexto)
+
+        # Guardar respuesta en BD (como 'alira')
+        insert_chat(user_id, "alira", respuesta)
+
+        # Reproducir por voz y mostrar en burbuja (opcional)
         hablar_y_guardar_con_bubble_threadsafe(respuesta)
 
         # ✅ Devolver ambos mensajes para actualizar el chat sin recargar
+        # e indicar que comenzó a hablar por voz
         return jsonify({
             "ok": True,
             "user_message": mensaje,
-            "ia_message": respuesta
+            "ia_message": respuesta,
+            "speaking": True
         })
 
     except Exception as e:
@@ -1626,11 +1964,90 @@ def send_message():
             "ok": False,
             "error": str(e)
         }), 500
+
+# ===================== RUTAS DE CONTROL DE VOZ (WEB) =====================
+@app.route('/tts_status', methods=['GET'])
+def tts_status():
+    """Devuelve si Iris está hablando actualmente."""
+    try:
+        return jsonify({"speaking": hablando})
+    except Exception as e:
+        return jsonify({"speaking": False, "error": str(e)})
+
+
+@app.route('/stop_tts', methods=['POST'])
+def stop_tts():
+    """Detiene la voz de Iris si está hablando."""
+    try:
+        detener_voz()
+        return jsonify({"stopped": True, "speaking": False})
+    except Exception as e:
+        return jsonify({"stopped": False, "error": str(e)}), 500
     
+
+# ===== Rutas REST para recordatorios =====
+@app.route('/reminders', methods=['GET'])
+def api_get_reminders():
+    if 'user_id' not in session:
+        return jsonify({'error':'No autorizado'}), 401
+    uid = session['user_id']
+    return jsonify(fetch_reminders(uid))
+
+@app.route('/reminders', methods=['POST'])
+def api_post_reminder():
+    if 'user_id' not in session:
+        return jsonify({'error':'No autorizado'}), 401
+    uid = session['user_id']
+    data = request.get_json() or {}
+    # Espera time: 'HH:MM' y message: str
+    hhmm = (data.get('time') or '').strip()
+    msg = (data.get('message') or '').strip()
+    if not hhmm or not msg:
+        return jsonify({'error':'faltan campos'}), 400
+    try:
+        h, m = hhmm.split(':')
+        h = int(h); m = int(m)
+        now = datetime.datetime.now()
+        due = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        if due < now:
+            due = due + datetime.timedelta(days=1)
+        rid = insert_reminder(uid, msg, due)
+        return jsonify({'ok':True, 'id':rid})
+    except Exception as e:
+        print('error creando reminder', e)
+        return jsonify({'error':'invalido'}), 400
+
+@app.route('/reminders/<int:rid>', methods=['DELETE'])
+def api_delete_reminder(rid:int):
+    if 'user_id' not in session:
+        return jsonify({'error':'No autorizado'}), 401
+    uid = session['user_id']
+    delete_reminder(uid, rid)
+    return jsonify({'ok':True})
+
+# ===== Rutas de notificaciones =====
+@app.route('/notifications', methods=['GET'])
+def api_get_notifications():
+    if 'user_id' not in session:
+        return jsonify({'error':'No autorizado'}), 401
+    uid = session['user_id']
+    return jsonify(fetch_notifications(uid))
+
+@app.route('/notifications/mark_all_read', methods=['POST'])
+def api_mark_all_read():
+    if 'user_id' not in session:
+        return jsonify({'error':'No autorizado'}), 401
+    uid = session['user_id']
+    mark_all_notifications_read(uid)
+    return jsonify({'ok':True})
 
 
 
 # ===================== EJECUCIÓN PRINCIPAL =====================
 if __name__ == "__main__":
-    # Nota: ejecuta la app Flask; la ventana flotante se lanza cuando el usuario pulsa activar desde la web (/activar).
+    # Iniciar el hilo de recordatorios solo en el proceso principal (evita doble inicio con el reloader de Flask)
+    import os
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+        start_reminder_thread()
+    # Ejecuta la app Flask; la ventana flotante se lanza cuando el usuario pulsa activar desde la web (/activar).
     app.run(debug=True)

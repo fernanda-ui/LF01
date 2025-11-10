@@ -371,3 +371,86 @@ button:hover, .btn-submit:hover {
   transform: translateY(-30px);
   z-index: 10;
 }
+
+/* ===== OVERLAY DE CARGA ===== */
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  display: none; /* visible al enviar */
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px) brightness(0.3);
+  background: rgba(0,0,0,0.6);
+  z-index: 9999;
+  flex-direction: column;
+}
+
+.loader-overlay.show {
+  display: flex;
+}
+
+.dual-spinner {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.dual-spinner .ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 6px solid rgba(255, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
+.dual-spinner .ring.outer {
+  inset: 30px; /* más cerca del punto central */
+  border-width: 8px; /* ajustar a menos gruesa */
+  border-top-color: #d61b1b; /* rojo vivo */
+  animation: spin-cw 1.2s linear infinite;
+}
+
+.dual-spinner .ring.inner {
+  /* convertir en punto rojo centrado con latido */
+  inset: auto;
+  width: 24px;  /* más pequeño para mayor separación */
+  height: 24px;
+  background: #ff3b3b;
+  border: none;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse 1.2s ease-in-out infinite; /* latido más sutil */
+  box-shadow: 0 0 12px rgba(255, 59, 59, 0.6), 0 0 24px rgba(214, 27, 27, 0.4) inset;
+}
+
+@keyframes spin-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes spin-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2); /* no alcanza el aro exterior */
+    opacity: 1;
+  }
+}
+
+.loader-text {
+  margin-top: 14px;
+  color: #ffdddd;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px rgba(214,27,27,0.5);
+}
